@@ -4,16 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"pnpm --filter @butaca/web dev\" \"pnpm --parallel --filter './services/*' dev\"",
+    "dev": "concurrently -k -n WEB,GATEWAY,USER,EMOTION,MOVIE,FAVORITES,DASHBOARD,MEME \"pnpm --filter @butaca/web dev\" \"pnpm --filter @butaca/api-gateway dev\" \"pnpm --filter @butaca/user-service dev\" \"pnpm --filter @butaca/emotion-service dev\" \"pnpm --filter @butaca/movie-service dev\" \"pnpm --filter @butaca/favorites-service dev\" \"pnpm --filter @butaca/dashboard-service dev\" \"pnpm --filter @butaca/meme-service dev\"",
     "dev:web": "pnpm --filter @butaca/web dev",
     "test": "pnpm --recursive --if-present test",
     "test:e2e": "playwright test",
     "db:generate": "pnpm --filter @butaca/database db:generate",
     "db:migrate": "pnpm --filter @butaca/database db:migrate",
-    "db:studio": "pnpm --filter @butaca/database db:studio"
+    "db:studio": "pnpm --filter @butaca/database db:studio",
+    "dev:services": "concurrently -k -n GATEWAY,USER,EMOTION,MOVIE,FAVORITES,DASHBOARD,MEME \"pnpm --filter @butaca/api-gateway dev\" \"pnpm --filter @butaca/user-service dev\" \"pnpm --filter @butaca/emotion-service dev\" \"pnpm --filter @butaca/movie-service dev\" \"pnpm --filter @butaca/favorites-service dev\" \"pnpm --filter @butaca/dashboard-service dev\" \"pnpm --filter @butaca/meme-service dev\"",
+    "test:unit": "pnpm --recursive --if-present test:unit",
+    "test:integration": "pnpm --recursive --if-present test:integration",
+    "test:all": "pnpm test:unit && pnpm test:integration"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
-    "concurrently": "^10.0.6"
+    "concurrently": "^10.0.6",
+    "vitest": "5.0.5"
   }
 }

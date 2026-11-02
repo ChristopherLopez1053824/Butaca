@@ -1,7 +1,13 @@
-allowBuilds:
-  esbuild: set this to true or false
-  workerd: set this to true or false
 packages:
   - "apps/*"
   - "services/*"
   - "packages/*"
+
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+  esbuild: true
+  workerd: false
+
+minimumReleaseAgeExclude:
+  - jose@6.2.15

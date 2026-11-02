@@ -1,0 +1,158 @@
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../generated/prisma"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Emotion {
+  HAPPY
+  SAD
+  ANGRY
+  TIRED
+  NEUTRAL
+  FEARFUL
+  SURPRISED
+  DISGUSTED
+
+  @@map("emotion")
+}
+
+enum EmotionSource {
+  CAMERA
+  MANUAL
+
+  @@map("emotion_source")
+}
+
+enum MediaType {
+  MOVIE
+  TV
+
+  @@map("media_type")
+}
+
+// ==========================================
+// USER SERVICE
+// ==========================================
+
+model Profile {
+  id          String   @id @db.Uuid
+  displayName String?  @map("display_name") @db.VarChar(120)
+  avatarUrl   String?  @map("avatar_url") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  emotions        EmotionRecord[]
+  recommendations Recommendation[]
+  favorites       Favorite[]
+  memeHistory     MemeHistory[]
+
+  @@map("profiles")
+}
+
+// ==========================================
+// EMOTION SERVICE
+// ==========================================
+
+model EmotionRecord {
+  id         String        @id @default(uuid()) @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  emotion    Emotion
+  source     EmotionSource
+  confidence Float?
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user            Profile          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendations Recommendation[]
+  memeHistory     MemeHistory[]
+
+  @@index([userId, createdAt])
+@@unique([id, userId])
+@@map("emotion_records")
+}
+
+// ==========================================
+// MOVIE SERVICE
+// ==========================================
+
+model Recommendation {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  emotionRecordId String    @map("emotion_record_id") @db.Uuid
+  tmdbId          Int       @map("tmdb_id")
+  mediaType       MediaType @map("media_type")
+  title           String    @db.VarChar(300)
+  overview        String?   @db.Text
+  posterPath      String?   @map("poster_path") @db.Text
+  backdropPath    String?   @map("backdrop_path") @db.Text
+  releaseDate     DateTime? @map("release_date") @db.Date
+  voteAverage     Float?    @map("vote_average")
+  position        Int?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+emotionRecord EmotionRecord @relation(fields: [emotionRecordId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([emotionRecordId])
+  @@index([tmdbId, mediaType])
+  @@map("recommendations")
+}
+
+// ==========================================
+// FAVORITES SERVICE
+// ==========================================
+
+model Favorite {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tmdbId       Int       @map("tmdb_id")
+  mediaType    MediaType @map("media_type")
+  title        String    @db.VarChar(300)
+  posterPath   String?   @map("poster_path") @db.Text
+  releaseDate  DateTime? @map("release_date") @db.Date
+  voteAverage  Float?    @map("vote_average")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId, mediaType])
+  @@index([userId, createdAt])
+  @@map("favorites")
+}
+
+// ==========================================
+// MEME SERVICE
+// ==========================================
+
+model MemeHistory {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  emotionRecordId String?  @map("emotion_record_id") @db.Uuid
+  provider        String   @db.VarChar(100)
+  externalId      String?  @map("external_id") @db.VarChar(255)
+  title           String?  @db.VarChar(300)
+  imageUrl        String   @map("image_url") @db.Text
+  contentUrl      String?  @map("content_url") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user          Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emotionRecord EmotionRecord? @relation(fields: [emotionRecordId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([emotionRecordId])
+  @@map("meme_history")
+}

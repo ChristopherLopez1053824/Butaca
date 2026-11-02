@@ -10,15 +10,19 @@
   "scripts": {
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "vitest run",
+    "test:integration": "vitest run tests/rls.integration.test.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.9",
     "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
-    "prisma": "8.0.0-rc.29"
+    "prisma": "7.10.1",
+    "vitest": "5.0.5"
   }
 }
