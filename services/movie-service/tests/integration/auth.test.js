@@ -1,14 +1,9 @@
-import { createHmac } from 'node:crypto';
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import app from '../../src/app.js';
 import { requireAuth } from '../../src/middlewares/auth.js';
-
-const USER_ID = '7f1d6a2e-3b4c-4d5e-8f90-123456789abc';
-const OTHER_USER_ID = '0b7c8d9e-1f20-4a3b-9c4d-567890abcdef';
-const ISSUER = process.env.SUPABASE_JWT_ISSUER;
-const SECRET = process.env.SUPABASE_JWT_SECRET;
+import { OTHER_USER_ID, USER_ID, signToken } from '../helpers/auth.js';
 
 const protectedApp = express();
 
@@ -18,34 +13,6 @@ function protectedHandler(req, res) {
 
 protectedApp.get('/protected', requireAuth, protectedHandler);
 protectedApp.post('/protected', requireAuth, protectedHandler);
-
-function encode(value) {
-  return Buffer.from(JSON.stringify(value)).toString('base64url');
-}
-
-function signToken({
-  sub = USER_ID,
-  issuer = ISSUER,
-  audience = 'authenticated',
-  expiresIn = 300
-} = {}) {
-  const now = Math.floor(Date.now() / 1000);
-  const header = encode({ alg: 'HS256', typ: 'JWT' });
-  const payload = encode({
-    sub,
-    role: 'authenticated',
-    iss: issuer,
-    aud: audience,
-    iat: now,
-    exp: now + expiresIn
-  });
-  const unsigned = `${header}.${payload}`;
-  const signature = createHmac('sha256', SECRET)
-    .update(unsigned)
-    .digest('base64url');
-
-  return `${unsigned}.${signature}`;
-}
 
 describe('movie-service authentication', () => {
   it('responde 401 en una ruta protegida sin JWT', async () => {
@@ -103,7 +70,7 @@ describe('movie-service authentication', () => {
       .get('/recommendations')
       .set('Authorization', `Bearer ${signToken()}`);
 
-    expect(response.status).toBe(404);
-    expect(response.body.code).toBe('NOT_FOUND');
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('VALIDATION_ERROR');
   });
 });

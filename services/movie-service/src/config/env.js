@@ -19,7 +19,8 @@ const envSchema = z.object({
   SUPABASE_JWT_ISSUER: optional(z.url().optional()),
   SUPABASE_JWT_AUDIENCE: optional(z.string().min(1).default('authenticated')),
   SUPABASE_JWT_SECRET: optional(z.string().min(1).optional()),
-  SUPABASE_JWKS_URL: optional(z.url().optional())
+  SUPABASE_JWKS_URL: optional(z.url().optional()),
+  RECOMMENDATIONS_CURSOR_SECRET: optional(z.string().min(32).optional())
 }).superRefine((data, context) => {
   if (!data.SUPABASE_URL && !data.SUPABASE_JWT_ISSUER) {
     context.addIssue({
