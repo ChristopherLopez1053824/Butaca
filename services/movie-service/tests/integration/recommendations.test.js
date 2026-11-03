@@ -105,7 +105,14 @@ describe('recommendations routes', () => {
   });
 
   it('lista recomendaciones almacenadas sin generar nuevas', async () => {
-    recommendationService.list.mockResolvedValue([RECOMMENDATION]);
+    recommendationService.list.mockResolvedValue({
+      data: [RECOMMENDATION],
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 1
+      }
+    });
 
     const response = await authorized(
       request(app)
@@ -116,18 +123,128 @@ describe('recommendations routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       status: 'ok',
-      data: [RECOMMENDATION]
+      data: [RECOMMENDATION],
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 1
+      }
     });
     expect(recommendationService.list).toHaveBeenCalledWith({
       userId: USER_ID,
       emotionRecordId: EMOTION_RECORD_ID,
-      authorization: expect.stringMatching(/^Bearer /)
+      from: undefined,
+      to: undefined,
+      page: 1,
+      limit: 10
     });
     expect(recommendationService.generate).not.toHaveBeenCalled();
   });
 
-  it('valida emotionRecordId en GET', async () => {
+  it('acepta GET sin filtros con paginación predeterminada', async () => {
+    recommendationService.list.mockResolvedValue({
+      data: [],
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0
+      }
+    });
+
     const response = await authorized(request(app).get('/recommendations'));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: 'ok',
+      data: [],
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0
+      }
+    });
+    expect(recommendationService.list).toHaveBeenCalledWith({
+      userId: USER_ID,
+      emotionRecordId: undefined,
+      from: undefined,
+      to: undefined,
+      page: 1,
+      limit: 10
+    });
+  });
+
+  it('reenvía filtros y paginación a la consulta de historial', async () => {
+    recommendationService.list.mockResolvedValue({
+      data: [RECOMMENDATION],
+      pagination: {
+        page: 2,
+        limit: 25,
+        total: 51
+      }
+    });
+
+    const response = await authorized(
+      request(app)
+        .get('/recommendations')
+        .query({
+          emotionRecordId: EMOTION_RECORD_ID,
+          from: '2026-01-01T00:00:00.000Z',
+          to: '2026-01-31T23:59:59.999Z',
+          page: 2,
+          limit: 25
+        })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.pagination).toEqual({
+      page: 2,
+      limit: 25,
+      total: 51
+    });
+    expect(recommendationService.list).toHaveBeenCalledWith({
+      userId: USER_ID,
+      emotionRecordId: EMOTION_RECORD_ID,
+      from: '2026-01-01T00:00:00.000Z',
+      to: '2026-01-31T23:59:59.999Z',
+      page: 2,
+      limit: 25
+    });
+  });
+
+  it('rechaza un rango de fechas inválido', async () => {
+    const response = await authorized(
+      request(app)
+        .get('/recommendations')
+        .query({
+          from: '2026-02-01T00:00:00.000Z',
+          to: '2026-01-01T00:00:00.000Z'
+        })
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('VALIDATION_ERROR');
+    expect(recommendationService.list).not.toHaveBeenCalled();
+  });
+
+  it('rechaza limit mayor que 100 y page inválido', async () => {
+    const limitResponse = await authorized(
+      request(app).get('/recommendations').query({ limit: 101 })
+    );
+    const pageResponse = await authorized(
+      request(app).get('/recommendations').query({ page: 0 })
+    );
+
+    expect(limitResponse.status).toBe(400);
+    expect(limitResponse.body.code).toBe('VALIDATION_ERROR');
+    expect(pageResponse.status).toBe(400);
+    expect(pageResponse.body.code).toBe('VALIDATION_ERROR');
+    expect(recommendationService.list).not.toHaveBeenCalled();
+  });
+
+  it('rechaza fechas con formato inválido', async () => {
+    const response = await authorized(
+      request(app).get('/recommendations').query({ from: '2026-01-01' })
+    );
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('VALIDATION_ERROR');
@@ -136,9 +253,9 @@ describe('recommendations routes', () => {
 
   it('propaga errores de negocio del servicio', async () => {
     recommendationService.list.mockRejectedValue(new AppError({
-      statusCode: 404,
-      code: 'NOT_FOUND',
-      message: 'El registro emocional no existe'
+      statusCode: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Emotion Service no está disponible'
     }));
 
     const response = await authorized(
@@ -147,11 +264,11 @@ describe('recommendations routes', () => {
         .query({ emotionRecordId: EMOTION_RECORD_ID })
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(503);
     expect(response.body).toEqual({
       status: 'error',
-      code: 'NOT_FOUND',
-      message: 'El registro emocional no existe',
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Emotion Service no está disponible',
       details: []
     });
   });

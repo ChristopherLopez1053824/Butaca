@@ -23,7 +23,7 @@ function configurationError() {
 }
 
 function getSecret() {
-  const secret = env.RECOMMENDATIONS_CURSOR_SECRET ?? env.SUPABASE_JWT_SECRET;
+  const secret = env.RECOMMENDATIONS_CURSOR_SECRET;
 
   if (typeof secret !== 'string' || secret.length === 0) {
     throw configurationError();
@@ -71,7 +71,7 @@ export function encodeCursor(payload) {
     tvPage: payload.tvPage,
     movieExhausted: payload.movieExhausted,
     tvExhausted: payload.tvExhausted,
-    delivered: [...new Set(payload.delivered)]
+    delivered: [...new Set(payload.delivered)].slice(-MAX_DELIVERED_KEYS)
   };
 
   if (!isValidPayload(state)) {

@@ -42,4 +42,18 @@ describe('recommendation cursor', () => {
       code: 'VALIDATION_ERROR'
     }));
   });
+
+  it('limita las claves entregadas sin fallar al firmar', () => {
+    const delivered = Array.from(
+      { length: 1001 },
+      (_, index) => `MOVIE:${index + 1}`
+    );
+    const decoded = decodeCursor(encodeCursor({
+      ...PAYLOAD,
+      delivered
+    }));
+
+    expect(decoded.delivered).toHaveLength(1000);
+    expect(decoded.delivered[0]).toBe('MOVIE:2');
+  });
 });
