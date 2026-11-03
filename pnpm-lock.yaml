@@ -276,6 +276,15 @@ importers:
 
   services/movie-service:
     dependencies:
+      '@butaca/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@butaca/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@butaca/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -297,7 +306,14 @@ importers:
     devDependencies:
       supertest:
         specifier: ^7.3.1
+<<<<<<< HEAD
         version: 7.3.1
+=======
+        version: 7.3.1(supports-color@10.2.2)
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@26.6.6)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+>>>>>>> 5c43e8f (Conf. variables de entorno dependencias, middelware de autenticacion validacion jwt manejos de erroes, rutas y controladores de baese)
 
   services/user-service:
     dependencies:
