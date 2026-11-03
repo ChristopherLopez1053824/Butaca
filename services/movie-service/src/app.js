@@ -1,6 +1,9 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import routes from './routes/index.js';
+import { errorHandler } from './middlewares/error-handler.js';
+import { notFoundHandler } from './middlewares/not-found.js';
 
 const app = express();
 
@@ -22,5 +25,10 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+app.use(routes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;
