@@ -22,16 +22,26 @@ export async function generateRecommendations(req, res, next) {
 
 export async function listRecommendations(req, res, next) {
   try {
-    const { emotionRecordId } = req.validated.query;
-    const data = await recommendationService.list({
+    const {
+      emotionRecordId,
+      from,
+      to,
+      page,
+      limit
+    } = req.validated.query;
+    const result = await recommendationService.list({
       userId: req.auth.userId,
       emotionRecordId,
-      authorization: req.headers.authorization
+      from,
+      to,
+      page,
+      limit
     });
 
     return res.status(200).json({
       status: 'ok',
-      data
+      data: result.data,
+      pagination: result.pagination
     });
   } catch (error) {
     return next(error);

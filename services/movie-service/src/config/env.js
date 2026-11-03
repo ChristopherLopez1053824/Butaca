@@ -15,12 +15,13 @@ const envSchema = z.object({
   TMDB_API_KEY: z.string().min(1, 'TMDB_API_KEY es obligatoria'),
   TMDB_BASE_URL: z.url().default('https://api.themoviedb.org/3'),
   EMOTION_SERVICE_URL: z.url().default('http://localhost:3002'),
+  EMOTION_SERVICE_TIMEOUT_MS: z.coerce.number().int().min(1).default(5000),
   SUPABASE_URL: optional(z.url().optional()),
   SUPABASE_JWT_ISSUER: optional(z.url().optional()),
   SUPABASE_JWT_AUDIENCE: optional(z.string().min(1).default('authenticated')),
   SUPABASE_JWT_SECRET: optional(z.string().min(1).optional()),
   SUPABASE_JWKS_URL: optional(z.url().optional()),
-  RECOMMENDATIONS_CURSOR_SECRET: optional(z.string().min(32).optional())
+  RECOMMENDATIONS_CURSOR_SECRET: z.string().min(32, 'RECOMMENDATIONS_CURSOR_SECRET debe tener al menos 32 caracteres')
 }).superRefine((data, context) => {
   if (!data.SUPABASE_URL && !data.SUPABASE_JWT_ISSUER) {
     context.addIssue({

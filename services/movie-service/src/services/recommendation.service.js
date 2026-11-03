@@ -68,14 +68,6 @@ function serializeRecommendation(row) {
   };
 }
 
-function notFoundEmotionRecordError() {
-  return new AppError({
-    statusCode: 404,
-    code: ERROR_CODES.NOT_FOUND,
-    message: 'El registro emocional no existe'
-  });
-}
-
 function forbiddenCursorError() {
   return new AppError({
     statusCode: 403,
@@ -128,6 +120,24 @@ function createInitialState(userId, emotionRecordId) {
   };
 }
 
+function dedupeCandidates(candidates) {
+  const keys = new Set();
+  const unique = [];
+
+  for (const candidate of candidates) {
+    const key = candidateKey(candidate);
+
+    if (keys.has(key)) {
+      continue;
+    }
+
+    keys.add(key);
+    unique.push(candidate);
+  }
+
+  return unique;
+}
+
 export function createRecommendationService(overrides = {}) {
   const dependencies = {
     withUserContext,
@@ -143,15 +153,6 @@ export function createRecommendationService(overrides = {}) {
   async function loadExistingKeys(userId, emotionRecordId) {
     try {
       return await dependencies.withUserContext(userId, async (tx) => {
-        const emotionRecord = await tx.emotionRecord.findFirst({
-          where: { id: emotionRecordId },
-          select: { id: true }
-        });
-
-        if (!emotionRecord) {
-          throw notFoundEmotionRecordError();
-        }
-
         const rows = await tx.recommendation.findMany({
           where: { userId, emotionRecordId },
           select: { tmdbId: true, mediaType: true }
@@ -169,38 +170,16 @@ export function createRecommendationService(overrides = {}) {
   }
 
   async function persistSelection(userId, emotionRecordId, selected) {
-    if (selected.length === 0) {
+    const uniqueSelected = dedupeCandidates(selected);
+
+    if (uniqueSelected.length === 0) {
       return [];
     }
 
     const now = new Date();
-    const prepared = selected.map((candidate, index) => ({
-      id: randomUUID(),
-      userId,
-      emotionRecordId,
-      tmdbId: candidate.tmdbId,
-      mediaType: candidate.mediaType,
-      title: candidate.title.slice(0, 300),
-      overview: candidate.overview ?? null,
-      posterPath: candidate.posterPath ?? null,
-      backdropPath: candidate.backdropPath ?? null,
-      releaseDate: releaseDateToDate(candidate.releaseDate),
-      voteAverage: candidate.voteAverage ?? null,
-      position: index + 1,
-      createdAt: now
-    }));
 
     try {
       return await dependencies.withUserContext(userId, async (tx) => {
-        const emotionRecord = await tx.emotionRecord.findFirst({
-          where: { id: emotionRecordId },
-          select: { id: true }
-        });
-
-        if (!emotionRecord) {
-          throw notFoundEmotionRecordError();
-        }
-
         await tx.$queryRaw`
           SELECT pg_advisory_xact_lock(
             hashtext(${userId}),
@@ -210,10 +189,29 @@ export function createRecommendationService(overrides = {}) {
 
         const existingRows = await tx.recommendation.findMany({
           where: { userId, emotionRecordId },
-          select: { tmdbId: true, mediaType: true }
+          select: { tmdbId: true, mediaType: true, position: true }
         });
         const existingKeys = new Set(existingRows.map(candidateKey));
-        const toCreate = prepared.filter((row) => !existingKeys.has(candidateKey(row)));
+        const maxPosition = existingRows.reduce((max, row) => (
+          Number.isInteger(row.position) ? Math.max(max, row.position) : max
+        ), 0);
+        const toCreate = uniqueSelected
+          .filter((candidate) => !existingKeys.has(candidateKey(candidate)))
+          .map((candidate, index) => ({
+            id: randomUUID(),
+            userId,
+            emotionRecordId,
+            tmdbId: candidate.tmdbId,
+            mediaType: candidate.mediaType,
+            title: candidate.title.slice(0, 300),
+            overview: candidate.overview ?? null,
+            posterPath: candidate.posterPath ?? null,
+            backdropPath: candidate.backdropPath ?? null,
+            releaseDate: releaseDateToDate(candidate.releaseDate),
+            voteAverage: candidate.voteAverage ?? null,
+            position: maxPosition + index + 1,
+            createdAt: now
+          }));
 
         if (toCreate.length > 0) {
           await tx.recommendation.createMany({ data: toCreate });
@@ -264,15 +262,20 @@ export function createRecommendationService(overrides = {}) {
           })
         }))
         .sort((left, right) => right.totalScore - left.totalScore);
-      const remaining = BATCH_SIZE_PER_MEDIA - selected.length;
 
       for (const candidate of candidates) {
-        if (selected.length >= remaining) {
+        if (selected.length >= BATCH_SIZE_PER_MEDIA) {
           break;
         }
 
+        const key = candidateKey(candidate);
+
+        if (seen.has(key)) {
+          continue;
+        }
+
         selected.push(candidate);
-        seen.add(candidateKey(candidate));
+        seen.add(key);
       }
 
       const exhausted = response.results.length === 0
@@ -358,11 +361,6 @@ export function createRecommendationService(overrides = {}) {
       seen,
       state
     });
-    const persisted = await persistSelection(
-      userId,
-      emotionRecordId,
-      selection.selected
-    );
     const hasMore = !(selection.movieExhausted && selection.tvExhausted);
     const delivered = [
       ...new Set([...state.delivered, ...selection.selected.map(candidateKey)])
@@ -378,6 +376,11 @@ export function createRecommendationService(overrides = {}) {
         delivered
       })
       : null;
+    const persisted = await persistSelection(
+      userId,
+      emotionRecordId,
+      selection.selected
+    );
 
     return {
       data: persisted.map(serializeRecommendation),
@@ -392,27 +395,48 @@ export function createRecommendationService(overrides = {}) {
     };
   }
 
-  async function list({ userId, emotionRecordId, authorization }) {
-    let rows;
+  async function list({
+    userId,
+    emotionRecordId,
+    from,
+    to,
+    page = 1,
+    limit = 10
+  }) {
+    const where = { userId };
+
+    if (emotionRecordId !== undefined) {
+      where.emotionRecordId = emotionRecordId;
+    }
+
+    if (from !== undefined || to !== undefined) {
+      where.createdAt = {
+        ...(from === undefined ? {} : { gte: new Date(from) }),
+        ...(to === undefined ? {} : { lte: new Date(to) })
+      };
+    }
 
     try {
-      rows = await dependencies.withUserContext(userId, async (tx) => {
-        const emotionRecord = await tx.emotionRecord.findFirst({
-          where: { id: emotionRecordId },
-          select: { id: true }
-        });
-
-        if (!emotionRecord) {
-          return null;
-        }
-
-        return tx.recommendation.findMany({
-          where: { userId, emotionRecordId },
+      return await dependencies.withUserContext(userId, async (tx) => {
+        const total = await tx.recommendation.count({ where });
+        const rows = await tx.recommendation.findMany({
+          where,
           orderBy: [
-            { createdAt: 'asc' },
-            { id: 'asc' }
-          ]
+            { createdAt: 'desc' },
+            { id: 'desc' }
+          ],
+          skip: (page - 1) * limit,
+          take: limit
         });
+
+        return {
+          data: rows.map(serializeRecommendation),
+          pagination: {
+            page,
+            limit,
+            total
+          }
+        };
       });
     } catch (error) {
       if (error instanceof AppError) {
@@ -421,23 +445,6 @@ export function createRecommendationService(overrides = {}) {
 
       throw persistenceReadError();
     }
-
-    if (rows !== null) {
-      return rows.map(serializeRecommendation);
-    }
-
-    try {
-      await dependencies.getEmotionRecord(emotionRecordId, { authorization });
-    } catch (error) {
-      if (
-        error instanceof AppError
-        && (error.statusCode === 403 || error.statusCode === 404)
-      ) {
-        throw error;
-      }
-    }
-
-    throw notFoundEmotionRecordError();
   }
 
   return {

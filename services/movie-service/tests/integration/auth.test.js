@@ -67,8 +67,9 @@ describe('movie-service authentication', () => {
 
   it('deja pasar el JWT válido hasta la ruta protegida', async () => {
     const response = await request(app)
-      .get('/recommendations')
-      .set('Authorization', `Bearer ${signToken()}`);
+      .post('/recommendations')
+      .set('Authorization', `Bearer ${signToken()}`)
+      .send({});
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('VALIDATION_ERROR');
