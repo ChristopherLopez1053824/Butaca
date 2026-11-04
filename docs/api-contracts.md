@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Contrato de API de Butaca
 
 Estado: borrador para aprobación del equipo.
@@ -123,6 +124,33 @@ Devuelve el perfil propio. Responde `404 NOT_FOUND` si el trigger de Supabase a�
 ### `PATCH /api/users/me`
 
 Actualiza uno o ambos campos. Debe incluir al menos uno y no admite otros.
+=======
+# Contratos implementados
+
+Las rutas de negocio públicas de estos servicios requieren
+`Authorization: Bearer <JWT>`. El gateway valida el token y elimina el prefijo
+del proxy antes de enviar la solicitud: `/api/users/me` llega a user-service
+como `/me`; `/api/favorites` llega a favorites-service como `/`. Por eso ambos
+servicios validan también el JWT y obtienen de él el UUID del usuario; no aceptan un id de
+usuario en la ruta ni en el cuerpo. Los accesos a datos se ejecutan dentro de
+`withUserContext` para aplicar RLS.
+
+Las respuestas exitosas usan `{ "status": "ok", "data": ... }`. Los errores usan
+`{ "status": "error", "code": "...", "message": "..." }`; los errores de
+validación pueden incluir `details`.
+
+## User Service
+
+### `GET /api/users/me`
+
+Devuelve el perfil propio. Responde `404 NOT_FOUND` si el trigger de Supabase
+aún no creó el perfil.
+
+### `PATCH /api/users/me`
+
+Actualiza uno o ambos campos del perfil. El cuerpo debe incluir al menos un campo
+y no puede contener otros:
+>>>>>>> 7799a50 (Servicio de usuario y favorito)
 
 ```json
 {
@@ -131,6 +159,7 @@ Actualiza uno o ambos campos. Debe incluir al menos uno y no admite otros.
 }
 ```
 
+<<<<<<< HEAD
 `displayName` admite `null` y hasta 120 caracteres. `avatarUrl` admite `null` o una URL válida. El servicio no crea ni elimina perfiles.
 
 ## 6. Emotion Service
@@ -237,6 +266,17 @@ Devuelve los metadatos normalizados de una película o serie desde TMDB.
 ### `POST /api/favorites`
 
 Crea un favorito y responde `201`. El cliente envía los metadatos que se guardarán.
+=======
+`displayName` admite `null` y hasta 120 caracteres; `avatarUrl` admite `null` o
+una URL válida. El servicio no crea ni elimina perfiles.
+
+## Favorites Service
+
+### `POST /api/favorites`
+
+Crea un favorito y responde `201`. El cliente proporciona el título porque el
+Movie Service aún no ofrece la consulta de metadatos:
+>>>>>>> 7799a50 (Servicio de usuario y favorito)
 
 ```json
 {
@@ -249,6 +289,7 @@ Crea un favorito y responde `201`. El cliente envía los metadatos que se guarda
 }
 ```
 
+<<<<<<< HEAD
 `title` es obligatorio. `posterPath`, `releaseDate` y `voteAverage` admiten `null`. `voteAverage` va de 0 a 10. Un duplicado responde `409 CONFLICT`.
 
 ### `GET /api/favorites`
@@ -264,10 +305,23 @@ Elimina un favorito propio y responde `204` sin cuerpo. Responde `404 NOT_FOUND`
 ### `GET /api/dashboard/summary`
 
 Admite `from` y `to`. Reúne los datos de Emotion, Movie y Favorites sin leer sus tablas.
+=======
+`mediaType` admite `MOVIE` o `TV`; `posterPath`, `releaseDate` y `voteAverage`
+son opcionales y admiten `null`. El título es obligatorio. `releaseDate` usa
+`YYYY-MM-DD` y `voteAverage` debe estar entre 0 y 10. Un favorito duplicado
+responde `409 CONFLICT`.
+
+### `GET /api/favorites`
+
+Devuelve los favoritos propios, ordenados por fecha de creación descendente, con
+paginación opcional mediante `page` (predeterminado `1`) y `limit`
+(predeterminado `20`, máximo `100`):
+>>>>>>> 7799a50 (Servicio de usuario y favorito)
 
 ```json
 {
   "status": "ok",
+<<<<<<< HEAD
   "data": {
     "emotionTimeline": [
       { "date": "2026-11-01", "emotion": "HAPPY", "count": 2 }
@@ -303,3 +357,14 @@ Las respuestas entre servicios usan el formato de este contrato, excepto Emotion
 - Confirmar qué hace el frontend cuando la cámara detecta `happy` o `neutral`.
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
 - Confirmar el formato de `GET /api/dashboard/summary`.
+=======
+  "data": [],
+  "pagination": { "page": 1, "limit": 20, "total": 0 }
+}
+```
+
+### `DELETE /api/favorites/:id`
+
+Elimina el favorito propio con el UUID indicado. Responde `204` sin cuerpo, o
+`404 NOT_FOUND` si no existe o no pertenece al usuario autenticado.
+>>>>>>> 7799a50 (Servicio de usuario y favorito)
