@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Contrato de API de Butaca
 
 Estado: borrador para aprobación del equipo.
@@ -368,3 +369,5 @@ Las respuestas entre servicios usan el formato de este contrato, excepto Emotion
 Elimina el favorito propio con el UUID indicado. Responde `204` sin cuerpo, o
 `404 NOT_FOUND` si no existe o no pertenece al usuario autenticado.
 >>>>>>> 7799a50 (Servicio de usuario y favorito)
+=======
+>>>>>>> 4a0a05e (Revert "Servicio de usuario y favorito")
