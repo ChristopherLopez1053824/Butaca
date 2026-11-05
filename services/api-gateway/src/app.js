@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { requireAuth } from '@butaca/auth';
+import { errorBody, proxyError } from './errors.js';
 
 const app = express();
 
@@ -21,7 +22,12 @@ app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 200,
   standardHeaders: 'draft-7',
-  legacyHeaders: false
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json(
+      errorBody('RATE_LIMIT_EXCEEDED', 'Se excedió el límite de solicitudes')
+    );
+  }
 }));
 
 app.use((req, res, next) => {
@@ -51,7 +57,19 @@ const services = [
   ['memes', 'MEME_SERVICE_URL', 'http://localhost:3006']
 ];
 
+const PROXY_TIMEOUT_MS = Number(process.env.PROXY_TIMEOUT_MS || 15000);
+
 app.use('/api', requireAuth);
+
+app.use('/api', (req, res, next) => {
+  if (req.auth.role !== 'authenticated') {
+    return res.status(403).json(
+      errorBody('FORBIDDEN', 'El token no tiene permiso para usar esta API')
+    );
+  }
+
+  return next();
+});
 
 for (const [route, env, defaultUrl] of services) {
   app.use(
@@ -59,21 +77,24 @@ for (const [route, env, defaultUrl] of services) {
     createProxyMiddleware({
       target: process.env[env] || defaultUrl,
       changeOrigin: true,
+      proxyTimeout: PROXY_TIMEOUT_MS,
       on: {
+        proxyReq: (proxyReq, req) => {
+          proxyReq.once('timeout', () => {
+            req.proxyTimedOut = true;
+          });
+        },
         error: (error, req, res) => {
-          if (!res.headersSent) {
-            res.writeHead(502, {
-              'Content-Type': 'application/json'
-            });
+          console.error(`[proxy:${route}] ${error.code || error.message}`);
+
+          if (res.headersSent) {
+            res.destroy();
+            return;
           }
 
-          res.end(JSON.stringify({
-            status: 'error',
-            message: `El servicio ${route} no está disponible`,
-            details: process.env.NODE_ENV === 'development'
-              ? error.message
-              : undefined
-          }));
+          const { statusCode, body } = proxyError(req.proxyTimedOut, route);
+          res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(body));
         }
       }
     })
@@ -81,10 +102,21 @@ for (const [route, env, defaultUrl] of services) {
 }
 
 app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: `La ruta ${req.method} ${req.originalUrl} no existe en el API Gateway`
-  });
+  res.status(404).json(
+    errorBody('NOT_FOUND', `La ruta ${req.method} ${req.originalUrl} no existe en el API Gateway`)
+  );
+});
+
+app.use((error, req, res, next) => {
+  console.error(error);
+
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  return res.status(500).json(
+    errorBody('INTERNAL_ERROR', 'Ocurrió un error inesperado')
+  );
 });
 
 export default app;
