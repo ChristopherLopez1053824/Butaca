@@ -39,6 +39,9 @@ jobs:
 
       - name: Ejecutar pruebas
         run: pnpm test
+        env:
+          # Valor ficticio para que los servicios carguen; ninguna prueba se conecta.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
       - name: Compilar el frontend
         run: pnpm --filter @butaca/web build

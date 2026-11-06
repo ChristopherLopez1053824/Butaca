@@ -27,6 +27,21 @@ describe('emotion catalog', () => {
     expect(getGoalForEmotion('NEUTRAL')).toBe(EMOTION_GOALS.CALM);
   });
 
+  it.each([
+    ['SAD', 'JOY'],
+    ['ANGRY', 'CALM'],
+    ['FEARFUL', 'SAFETY'],
+    ['DISGUSTED', 'ACCEPTANCE'],
+    ['NEGATIVE_SURPRISE', 'TRANQUILITY'],
+    ['CONTEMPT', 'EMPATHY'],
+    ['FRUSTRATION', 'MOTIVATION'],
+    ['CONFUSION', 'CLARITY'],
+    ['SHAME', 'SELF_CONFIDENCE'],
+    ['BOREDOM', 'ENTHUSIASM']
+  ])('reconoce %s, que envía Emotion Service', (emotion, goal) => {
+    expect(getGoalForEmotion(emotion)).toBe(EMOTION_GOALS[goal]);
+  });
+
   it('devuelve null para emociones desconocidas', () => {
     expect(getGoalForEmotion('EUFORIA')).toBeNull();
   });

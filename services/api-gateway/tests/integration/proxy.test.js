@@ -12,6 +12,7 @@ let token;
 let received;
 let okServer;
 let slowServer;
+let emotionServer;
 
 function listen(server) {
   return new Promise((resolve) => {
@@ -37,18 +38,36 @@ beforeAll(async () => {
     res.end('{"status":"ok"}');
   });
 
+  // Simula Emotion Service, que responde con { success } y usa el prefijo /api/emotions.
+  emotionServer = http.createServer((req, res) => {
+    received = `${req.method} ${req.url}`;
+
+    if (req.url.startsWith('/api/emotions/invalido')) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: { code: 'INVALID_PARAMETERS', message: 'Datos inválidos' }
+      }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, data: { emotion: 'SAD' } }));
+  });
+
   // Nunca responde: sirve para provocar el timeout del proxy.
   slowServer = http.createServer(() => {});
 
   const okUrl = `http://127.0.0.1:${await listen(okServer)}`;
   const slowUrl = `http://127.0.0.1:${await listen(slowServer)}`;
+  const emotionUrl = `http://127.0.0.1:${await listen(emotionServer)}`;
 
   delete process.env.SUPABASE_URL;
   process.env.SUPABASE_JWT_SECRET = JWT_SECRET;
   process.env.SUPABASE_JWT_ISSUER = ISSUER;
   process.env.PROXY_TIMEOUT_MS = '200';
   process.env.USER_SERVICE_URL = okUrl;
-  process.env.EMOTION_SERVICE_URL = okUrl;
+  process.env.EMOTION_SERVICE_URL = emotionUrl;
   process.env.MOVIE_SERVICE_URL = okUrl;
   process.env.FAVORITES_SERVICE_URL = okUrl;
   process.env.DASHBOARD_SERVICE_URL = slowUrl;
@@ -61,6 +80,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   okServer.close();
+  emotionServer.close();
   slowServer.closeAllConnections();
   slowServer.close();
 });
@@ -69,8 +89,9 @@ describe('proxy del api-gateway', () => {
   it.each([
     ['get', '/api/users/me', 'GET /me'],
     ['patch', '/api/users/me', 'PATCH /me'],
-    ['post', '/api/emotions', 'POST /'],
-    ['get', '/api/emotions/abc', 'GET /abc'],
+    ['post', '/api/emotions', 'POST /api/emotions'],
+    ['get', '/api/emotions/abc?page=2', 'GET /api/emotions/abc?page=2'],
+    ['get', '/api/emotions/health', 'GET /health'],
     ['post', '/api/movies/recommendations', 'POST /recommendations'],
     ['get', '/api/movies/details/550?mediaType=MOVIE', 'GET /details/550?mediaType=MOVIE'],
     ['get', '/api/favorites?limit=5', 'GET /?limit=5'],
@@ -81,6 +102,28 @@ describe('proxy del api-gateway', () => {
 
     expect(response.status).toBe(200);
     expect(received).toBe(expected);
+  });
+
+  it('convierte la respuesta exitosa de Emotion al formato común', async () => {
+    const response = await request(app)
+      .get('/api/emotions/abc')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok', data: { emotion: 'SAD' } });
+  });
+
+  it('convierte el error de Emotion al formato común', async () => {
+    const response = await request(app)
+      .post('/api/emotions/invalido')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      status: 'error',
+      code: 'VALIDATION_ERROR',
+      message: 'Datos inválidos'
+    });
   });
 
   it('responde 503 si el servicio está caído', async () => {

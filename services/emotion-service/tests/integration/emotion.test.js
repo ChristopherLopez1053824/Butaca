@@ -22,7 +22,8 @@ let userB;
 const registrosA = [];
 const registrosB = [];
 
-describe('Emotion Service - Integracion real', () => {
+// Se omite si no hay un JWT real de Supabase, por ejemplo en CI.
+describe.skipIf(!tokenA)('Emotion Service - Integracion real', () => {
 
   beforeAll(async () => {
     if (!tokenA) {
