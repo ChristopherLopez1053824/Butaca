@@ -15,6 +15,7 @@ datasource db {
 // ENUMS
 // ==========================================
 
+
 enum Emotion {
   HAPPY
   SAD
@@ -25,8 +26,17 @@ enum Emotion {
   SURPRISED
   DISGUSTED
 
+  // Nuevas emociones
+  NEGATIVE_SURPRISE
+  CONTEMPT
+  FRUSTRATION
+  CONFUSION
+  SHAME
+  BOREDOM
+
   @@map("emotion")
 }
+
 
 enum EmotionSource {
   CAMERA
