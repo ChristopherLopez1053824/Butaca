@@ -68,6 +68,8 @@ Todos los errores usan este formato:
 
 ## Variables de entorno
 
+El Gateway valida `PORT`, `WEB_URL`, `PROXY_TIMEOUT_MS` y las URL de los servicios al iniciar. Si un valor no es válido, no arranca e indica cuál debe corregirse. Si una variable está vacía, usa su valor por defecto.
+
 | Variable | Uso |
 |---|---|
 | `PORT` | Puerto del Gateway |
