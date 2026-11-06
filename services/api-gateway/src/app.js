@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { requireAuth } from '@butaca/auth';
+import { config } from './config.js';
 import { errorBody, proxyError } from './errors.js';
 
 const app = express();
@@ -13,7 +14,7 @@ app.disable('x-powered-by');
 app.use(helmet());
 
 app.use(cors({
-  origin: process.env.WEB_URL || 'http://localhost:5173',
+  origin: config.WEB_URL,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -49,15 +50,13 @@ app.get('/health', (req, res) => {
 });
 
 const services = [
-  ['users', 'USER_SERVICE_URL', 'http://localhost:3001'],
-  ['emotions', 'EMOTION_SERVICE_URL', 'http://localhost:3002'],
-  ['movies', 'MOVIE_SERVICE_URL', 'http://localhost:3003'],
-  ['favorites', 'FAVORITES_SERVICE_URL', 'http://localhost:3004'],
-  ['dashboard', 'DASHBOARD_SERVICE_URL', 'http://localhost:3005'],
-  ['memes', 'MEME_SERVICE_URL', 'http://localhost:3006']
+  ['users', config.USER_SERVICE_URL],
+  ['emotions', config.EMOTION_SERVICE_URL],
+  ['movies', config.MOVIE_SERVICE_URL],
+  ['favorites', config.FAVORITES_SERVICE_URL],
+  ['dashboard', config.DASHBOARD_SERVICE_URL],
+  ['memes', config.MEME_SERVICE_URL]
 ];
-
-const PROXY_TIMEOUT_MS = Number(process.env.PROXY_TIMEOUT_MS || 15000);
 
 app.use('/api', requireAuth);
 
@@ -71,13 +70,13 @@ app.use('/api', (req, res, next) => {
   return next();
 });
 
-for (const [route, env, defaultUrl] of services) {
+for (const [route, target] of services) {
   app.use(
     `/api/${route}`,
     createProxyMiddleware({
-      target: process.env[env] || defaultUrl,
+      target,
       changeOrigin: true,
-      proxyTimeout: PROXY_TIMEOUT_MS,
+      proxyTimeout: config.PROXY_TIMEOUT_MS,
       on: {
         proxyReq: (proxyReq, req) => {
           proxyReq.once('timeout', () => {
