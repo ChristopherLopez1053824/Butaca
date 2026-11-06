@@ -30,13 +30,14 @@ Todas las rutas `/api/*` requieren `Authorization: Bearer <token>`.
 
 ## Ruta que recibe cada servicio
 
-El Gateway quita el prefijo antes de reenviar la petición. Cada servicio debe declarar sus rutas sin `/api/<prefijo>`.
+El Gateway quita el prefijo antes de reenviar la petición, y cada servicio declara sus rutas sin `/api/<prefijo>`. Emotion Service es la excepción: conserva `/api/emotions`, así que el Gateway le reenvía la ruta completa, salvo `/health`.
 
 | El frontend llama a | El servicio recibe |
 |---|---|
 | `GET /api/users/me` | `GET /me` |
-| `POST /api/emotions` | `POST /` |
-| `GET /api/emotions/:id` | `GET /:id` |
+| `POST /api/emotions` | `POST /api/emotions` |
+| `GET /api/emotions/:id` | `GET /api/emotions/:id` |
+| `GET /api/emotions/health` | `GET /health` |
 | `POST /api/movies/recommendations` | `POST /recommendations` |
 | `GET /api/favorites?limit=5` | `GET /?limit=5` |
 
@@ -47,6 +48,10 @@ El Gateway quita el prefijo antes de reenviar la petición. Cada servicio debe d
 3. El Gateway exige que `role` sea `authenticated`.
 4. Se eliminan las cabeceras `x-user-*` y `x-internal-*` que envíe el cliente.
 5. La cabecera `Authorization` se reenvía para que el servicio destino también pueda validar el token.
+
+## Formato de Emotion Service
+
+Emotion Service responde con `success` y `error`. El Gateway convierte esas respuestas al formato común antes de enviarlas al frontend, y cambia sus códigos propios por los del contrato. Por ejemplo, `INVALID_PARAMETERS` pasa a ser `VALIDATION_ERROR`.
 
 ## Errores
 

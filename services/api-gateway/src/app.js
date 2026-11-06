@@ -2,10 +2,11 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import { createProxyMiddleware, responseInterceptor } from 'http-proxy-middleware';
 import { requireAuth } from '@butaca/auth';
 import { config } from './config.js';
 import { errorBody, proxyError } from './errors.js';
+import { toCommonFormat } from './response-format.js';
 
 const app = express();
 
@@ -49,14 +50,35 @@ app.get('/health', (req, res) => {
   });
 });
 
+// keepPrefix: el servicio declara sus rutas con /api/<servicio>.
+// adaptFormat: el servicio usa { success } y se convierte al formato común.
 const services = [
   ['users', config.USER_SERVICE_URL],
-  ['emotions', config.EMOTION_SERVICE_URL],
+  ['emotions', config.EMOTION_SERVICE_URL, { keepPrefix: true, adaptFormat: true }],
   ['movies', config.MOVIE_SERVICE_URL],
   ['favorites', config.FAVORITES_SERVICE_URL],
   ['dashboard', config.DASHBOARD_SERVICE_URL],
   ['memes', config.MEME_SERVICE_URL]
 ];
+
+const adaptResponse = responseInterceptor(async (buffer, proxyRes) => {
+  const contentType = proxyRes.headers['content-type'] || '';
+
+  if (!contentType.includes('application/json') || buffer.length === 0) {
+    return buffer;
+  }
+
+  try {
+    return JSON.stringify(toCommonFormat(JSON.parse(buffer.toString('utf8'))));
+  } catch {
+    return buffer;
+  }
+});
+
+// Conserva /api/<servicio> en la ruta, excepto /health, que siempre es pública.
+function keepPrefix(path, req) {
+  return path.split('?')[0] === '/health' ? path : req.originalUrl;
+}
 
 app.use('/api', requireAuth);
 
@@ -70,34 +92,42 @@ app.use('/api', (req, res, next) => {
   return next();
 });
 
-for (const [route, target] of services) {
-  app.use(
-    `/api/${route}`,
-    createProxyMiddleware({
-      target,
-      changeOrigin: true,
-      proxyTimeout: config.PROXY_TIMEOUT_MS,
-      on: {
-        proxyReq: (proxyReq, req) => {
-          proxyReq.once('timeout', () => {
-            req.proxyTimedOut = true;
-          });
-        },
-        error: (error, req, res) => {
-          console.error(`[proxy:${route}] ${error.code || error.message}`);
+for (const [route, target, options = {}] of services) {
+  const proxyOptions = {
+    target,
+    changeOrigin: true,
+    proxyTimeout: config.PROXY_TIMEOUT_MS,
+    on: {
+      proxyReq: (proxyReq, req) => {
+        proxyReq.once('timeout', () => {
+          req.proxyTimedOut = true;
+        });
+      },
+      error: (error, req, res) => {
+        console.error(`[proxy:${route}] ${error.code || error.message}`);
 
-          if (res.headersSent) {
-            res.destroy();
-            return;
-          }
-
-          const { statusCode, body } = proxyError(req.proxyTimedOut, route);
-          res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(body));
+        if (res.headersSent) {
+          res.destroy();
+          return;
         }
+
+        const { statusCode, body } = proxyError(req.proxyTimedOut, route);
+        res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(body));
       }
-    })
-  );
+    }
+  };
+
+  if (options.keepPrefix) {
+    proxyOptions.pathRewrite = keepPrefix;
+  }
+
+  if (options.adaptFormat) {
+    proxyOptions.selfHandleResponse = true;
+    proxyOptions.on.proxyRes = adaptResponse;
+  }
+
+  app.use(`/api/${route}`, createProxyMiddleware(proxyOptions));
 }
 
 app.use((req, res) => {
