@@ -1,0 +1,449 @@
+.camera-card {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(20px, 3vw, 30px);
+  background:
+    radial-gradient(circle at 88% 8%, rgba(196, 181, 253, 0.16), transparent 34%),
+    radial-gradient(circle at 8% 100%, rgba(103, 232, 249, 0.08), transparent 42%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.84), rgba(11, 19, 26, 0.74));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+}
+
+.camera-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 20px;
+}
+
+.camera-card-header h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+  letter-spacing: -0.03em;
+}
+
+.camera-card-header p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.camera-state {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.camera-state-dot {
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.camera-state.confirming {
+  color: var(--yellow);
+  background: rgba(253, 230, 138, 0.1);
+  border-color: rgba(253, 230, 138, 0.24);
+}
+
+.camera-state.requesting {
+  color: var(--yellow);
+  background: rgba(253, 230, 138, 0.1);
+  border-color: rgba(253, 230, 138, 0.24);
+}
+
+.camera-state.confirming .camera-state-dot,
+.camera-state.requesting .camera-state-dot {
+  animation: camera-pulse 1.2s ease-in-out infinite;
+}
+
+.camera-state.active {
+  color: var(--mint);
+  background: rgba(134, 239, 172, 0.1);
+  border-color: rgba(134, 239, 172, 0.24);
+}
+
+.camera-state.error {
+  color: var(--pink);
+  background: rgba(249, 168, 212, 0.1);
+  border-color: rgba(249, 168, 212, 0.24);
+}
+
+@keyframes camera-pulse {
+  50% {
+    box-shadow: 0 0 0 5px rgba(253, 230, 138, 0.14);
+  }
+}
+
+.camera-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: clamp(280px, 42vw, 460px);
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(11, 19, 26, 0.5), rgba(11, 19, 26, 0.84)),
+    radial-gradient(circle at 50% 46%, rgba(196, 181, 253, 0.1), transparent 62%),
+    #0b131a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.camera-frame::before {
+  position: absolute;
+  inset: 14px;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px dashed rgba(196, 181, 253, 0.16);
+  border-radius: calc(var(--radius-lg) - 6px);
+  content: '';
+}
+
+.camera-frame.active::before {
+  border-color: rgba(134, 239, 172, 0.26);
+}
+
+.camera-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  transform: scaleX(-1);
+}
+
+.camera-idle {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.camera-idle-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 180px;
+  height: 150px;
+  margin-bottom: 14px;
+}
+
+.camera-orbit {
+  position: absolute;
+  border: 1px dashed rgba(196, 181, 253, 0.24);
+  border-radius: 50%;
+}
+
+.camera-orbit-one {
+  width: 148px;
+  height: 148px;
+  animation: camera-orbit 18s linear infinite;
+}
+
+.camera-orbit-two {
+  width: 114px;
+  height: 114px;
+  border-color: rgba(103, 232, 249, 0.2);
+  animation: camera-orbit 14s linear infinite reverse;
+}
+
+@keyframes camera-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.camera-idle-icon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  color: var(--sky);
+  background: radial-gradient(
+    circle,
+    rgba(196, 181, 253, 0.2),
+    rgba(103, 232, 249, 0.04)
+  );
+  border: 1px solid rgba(196, 181, 253, 0.24);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 14px rgba(196, 181, 253, 0.04),
+    0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.camera-idle-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.camera-spark {
+  position: absolute;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  color: var(--lavender);
+  opacity: 0.8;
+}
+
+.camera-spark-one {
+  top: 18px;
+  right: 20px;
+}
+
+.camera-spark-two {
+  bottom: 24px;
+  left: 18px;
+  width: 13px;
+  height: 13px;
+  color: var(--sky);
+}
+
+.camera-idle h3 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+}
+
+.camera-idle p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.camera-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.camera-consent {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  z-index: 20;
+  width: min(380px, calc(100vw - 48px));
+  padding: 18px;
+  text-align: left;
+  background: #0f172a;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%);
+}
+
+.camera-consent::before {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: #0f172a;
+  border-top: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border-strong);
+  transform: translateX(-50%) rotate(45deg);
+  content: '';
+}
+
+.camera-consent h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.camera-consent p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.camera-consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.camera-consent-actions .button {
+  flex: 1 1 140px;
+}
+
+.camera-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.camera-placeholder p {
+  margin: 0;
+}
+
+.camera-hint {
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.camera-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(196, 181, 253, 0.16);
+  border-top-color: var(--sky);
+  border-radius: 50%;
+  animation: camera-spin 0.8s linear infinite;
+}
+
+@keyframes camera-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.camera-live-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  color: var(--mint);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(11, 19, 26, 0.72);
+  border: 1px solid rgba(134, 239, 172, 0.28);
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+}
+
+.camera-live-badge span {
+  width: 7px;
+  height: 7px;
+  background: var(--mint);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(134, 239, 172, 0.14);
+}
+
+.camera-frame-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+}
+
+.camera-privacy {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .camera-card-header {
+    flex-direction: column;
+  }
+
+  .camera-state {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .camera-card {
+    padding: 16px;
+  }
+
+  .camera-frame {
+    min-height: 300px;
+  }
+
+  .camera-idle-visual {
+    width: 150px;
+    height: 130px;
+  }
+
+  .camera-orbit-one {
+    width: 126px;
+    height: 126px;
+  }
+
+  .camera-orbit-two {
+    width: 96px;
+    height: 96px;
+  }
+
+  .camera-idle-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .camera-idle-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .camera-control {
+    width: 100%;
+  }
+
+  .camera-control > .button {
+    width: 100%;
+  }
+
+  .camera-consent {
+    position: static;
+    width: 100%;
+    margin-top: 12px;
+    transform: none;
+  }
+
+  .camera-consent::before {
+    display: none;
+  }
+
+  .camera-frame-actions {
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camera-spinner,
+  .camera-state-dot,
+  .camera-orbit {
+    animation: none;
+  }
+}
