@@ -19,6 +19,22 @@ async function getAccessToken() {
   return accessToken;
 }
 
+// Algunas respuestas no traen JSON, como el 204 al eliminar un favorito
+// o una página de error del hosting. En esos casos devuelve null.
+async function readBody(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export async function apiRequest(path, options = {}) {
   const { auth = true, headers, ...requestOptions } = options;
   const requestHeaders = {
@@ -36,10 +52,14 @@ export async function apiRequest(path, options = {}) {
     headers: requestHeaders
   });
 
-  const data = await response.json();
+  const data = await readBody(response);
 
   if (!response.ok) {
-    throw new Error(data.message || 'Error al comunicarse con Butaca');
+    const error = new Error(data?.message || 'Error al comunicarse con Butaca');
+    error.status = response.status;
+    error.code = data?.code;
+    error.requestId = response.headers.get('x-request-id');
+    throw error;
   }
 
   return data;
