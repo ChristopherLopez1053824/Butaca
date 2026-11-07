@@ -104,10 +104,11 @@ describe.skipIf(!configured)('RLS integration', () => {
 
     await admin.query(
       `
-        INSERT INTO public.profiles (id, display_name)
-        VALUES ($1, 'RLS Test A'), ($2, 'RLS Test B')
+        INSERT INTO public.profiles (id, display_name, updated_at)
+        VALUES ($1, 'RLS Test A', now()), ($2, 'RLS Test B', now())
         ON CONFLICT (id) DO UPDATE
-        SET display_name = EXCLUDED.display_name
+        SET display_name = EXCLUDED.display_name,
+            updated_at = now()
       `,
       [USER_A, USER_B]
     );
