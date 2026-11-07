@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/api/emotions?page=1&limit=10"
+method: GET
+queryParams:
+  page: "1"
+  limit: "10"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      pm.test('Trae pagination', () => pm.expect(pm.response.json().pagination).to.be.an('object'));
+    language: text/javascript
+order: 3000

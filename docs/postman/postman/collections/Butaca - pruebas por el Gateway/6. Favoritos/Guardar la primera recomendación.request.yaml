@@ -1,0 +1,16 @@
+$kind: http-request
+description: Usa la primera película de "Pedir recomendaciones". Si ya existe, responde 409.
+url: "{{baseUrl}}/api/favorites"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: "{{favoriteBody}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 201 o 409', () => pm.expect([201, 409]).to.include(pm.response.code));
+      if (pm.response.code === 201) pm.collectionVariables.set('favoriteId', pm.response.json().data.id);
+    language: text/javascript
+order: 1000
