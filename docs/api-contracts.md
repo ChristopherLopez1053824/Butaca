@@ -19,6 +19,7 @@ Este contrato define cómo se comunican el frontend, el API Gateway y los micros
 - Las rutas `/api/*` requieren `Authorization: Bearer <token>`.
 - El id del usuario se obtiene del JWT; nunca se recibe en la ruta, la consulta o el cuerpo.
 - Las propiedades JSON usan `camelCase`.
+- Cada respuesta incluye `X-Request-Id`. El frontend puede enviar el suyo; el Gateway lo reenvía al servicio y lo registra en su log.
 - Las fechas con hora usan ISO 8601 en UTC: `2026-11-01T20:00:00.000Z`.
 - Las fechas sin hora usan `YYYY-MM-DD`.
 - Los ids propios de Butaca son UUID. `tmdbId` es un entero positivo.
@@ -286,6 +287,8 @@ Si un servicio falla, el resumen conserva los datos disponibles y agrega ese ser
 
 Cada llamada usa la URL del servicio por variable de entorno, reenvía `Authorization` y tiene timeout. Estas llamadas no pasan por el Gateway.
 
+El Gateway envía a cada servicio la IP del usuario en `X-Forwarded-For` y el identificador de la petición en `X-Request-Id`. Los servicios usan `app.set('trust proxy', 1)` para aplicar su rate limit por usuario. Por eso no deben quedar expuestos directamente a internet: solo el Gateway y el frontend son públicos.
+
 | Origen | Destino | Llamada |
 |---|---|---|
 | Movie | Emotion | `GET {EMOTION_SERVICE_URL}/api/emotions/:id` |
@@ -299,5 +302,4 @@ Las respuestas entre servicios usan el formato de este contrato, excepto Emotion
 
 - Confirmar qué hace el frontend cuando la cámara detecta `happy` o `neutral`.
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
-- Revisar el rate limit de los servicios, porque reciben las peticiones desde la IP del Gateway.
 - Confirmar el formato de `GET /api/dashboard/summary`.

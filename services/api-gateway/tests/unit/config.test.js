@@ -34,4 +34,19 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ MOVIE_SERVICE_URL: 'movie-service:3003' }))
       .toThrow('MOVIE_SERVICE_URL');
   });
+
+  it('no confía en proxies por defecto', () => {
+    expect(loadConfig({}).TRUST_PROXY).toBe(0);
+    expect(loadConfig({ TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1);
+  });
+
+  it.each(['-1', 'abc', '1.5'])('rechaza TRUST_PROXY con el valor %s', (value) => {
+    expect(() => loadConfig({ TRUST_PROXY: value })).toThrow('TRUST_PROXY');
+  });
+
+  it('registra peticiones fuera de las pruebas, salvo que se desactive', () => {
+    expect(loadConfig({ NODE_ENV: 'development' }).LOG_REQUESTS).toBe(true);
+    expect(loadConfig({ NODE_ENV: 'test' }).LOG_REQUESTS).toBe(false);
+    expect(loadConfig({ NODE_ENV: 'development', LOG_REQUESTS: 'false' }).LOG_REQUESTS).toBe(false);
+  });
 });

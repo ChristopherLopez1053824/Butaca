@@ -6,10 +6,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 const JWT_SECRET = 'clave-de-prueba-con-mas-de-32-caracteres';
 const ISSUER = 'http://supabase.test/auth/v1';
 const USER_ID = '7f1d6a2e-3b4c-4d5e-8f90-123456789abc';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 let app;
 let token;
 let received;
+let receivedHeaders;
 let okServer;
 let slowServer;
 let emotionServer;
@@ -34,6 +36,7 @@ function signToken(role) {
 beforeAll(async () => {
   okServer = http.createServer((req, res) => {
     received = `${req.method} ${req.url}`;
+    receivedHeaders = req.headers;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end('{"status":"ok"}');
   });
@@ -161,5 +164,50 @@ describe('proxy del api-gateway', () => {
 
     expect(response.status).toBe(403);
     expect(response.body.code).toBe('FORBIDDEN');
+  });
+
+  it('reemplaza el X-Forwarded-For del cliente por su IP real', async () => {
+    await request(app)
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Forwarded-For', '203.0.113.7');
+
+    expect(receivedHeaders['x-forwarded-for']).not.toContain('203.0.113.7');
+    expect(receivedHeaders['x-forwarded-for']).toMatch(/127\.0\.0\.1|::1/);
+  });
+
+  it('genera un X-Request-Id y lo envía al servicio', async () => {
+    const response = await request(app)
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.headers['x-request-id']).toMatch(UUID);
+    expect(receivedHeaders['x-request-id']).toBe(response.headers['x-request-id']);
+  });
+
+  it('conserva un X-Request-Id válido enviado por el cliente', async () => {
+    const response = await request(app)
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Request-Id', 'front-123');
+
+    expect(response.headers['x-request-id']).toBe('front-123');
+    expect(receivedHeaders['x-request-id']).toBe('front-123');
+  });
+
+  it('reemplaza un X-Request-Id con caracteres no permitidos', async () => {
+    const response = await request(app)
+      .get('/health')
+      .set('X-Request-Id', 'id con espacios');
+
+    expect(response.headers['x-request-id']).toMatch(UUID);
+  });
+
+  it('permite al frontend leer X-Request-Id por CORS', async () => {
+    const response = await request(app)
+      .get('/health')
+      .set('Origin', 'http://localhost:5173');
+
+    expect(response.headers['access-control-expose-headers']).toContain('X-Request-Id');
   });
 });
