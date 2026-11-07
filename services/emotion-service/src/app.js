@@ -15,6 +15,10 @@ import { withUserContext } from '@butaca/database';
 const app = express();
 
 app.disable('x-powered-by');
+
+// Las peticiones llegan por el API Gateway, que envía la IP real del usuario
+// en X-Forwarded-For. Confiar en un salto permite aplicar el rate limit por usuario.
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 

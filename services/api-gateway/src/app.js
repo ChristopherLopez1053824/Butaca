@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -9,15 +10,39 @@ import { errorBody, proxyError } from './errors.js';
 import { toCommonFormat } from './response-format.js';
 
 const app = express();
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 
 app.disable('x-powered-by');
+
+// Número de proxies delante del Gateway (0 en local). Define cómo se obtiene req.ip.
+app.set('trust proxy', config.TRUST_PROXY);
+
+// Identifica cada petición para seguirla en los logs del Gateway y de los servicios.
+app.use((req, res, next) => {
+  const incomingId = req.get('x-request-id');
+  req.id = incomingId && REQUEST_ID_PATTERN.test(incomingId) ? incomingId : randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+
+  if (config.LOG_REQUESTS) {
+    const startedAt = process.hrtime.bigint();
+
+    res.on('finish', () => {
+      const ms = Number(process.hrtime.bigint() - startedAt) / 1e6;
+      const path = req.originalUrl.split('?')[0];
+      console.log(`[gateway] ${req.id} ${req.method} ${path} ${res.statusCode} ${ms.toFixed(0)}ms`);
+    });
+  }
+
+  next();
+});
 
 app.use(helmet());
 
 app.use(cors({
   origin: config.WEB_URL,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+  exposedHeaders: ['X-Request-Id']
 }));
 
 app.use(rateLimit({
@@ -99,6 +124,11 @@ for (const [route, target, options = {}] of services) {
     proxyTimeout: config.PROXY_TIMEOUT_MS,
     on: {
       proxyReq: (proxyReq, req) => {
+        // Reemplaza cualquier X-Forwarded-For del cliente por la IP que calculó el Gateway.
+        // Así cada servicio aplica su rate limit por usuario y no por la IP del Gateway.
+        proxyReq.setHeader('x-forwarded-for', req.ip);
+        proxyReq.setHeader('x-request-id', req.id);
+
         proxyReq.once('timeout', () => {
           req.proxyTimedOut = true;
         });

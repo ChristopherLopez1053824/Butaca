@@ -53,6 +53,22 @@ El Gateway quita el prefijo antes de reenviar la petición, y cada servicio decl
 
 Emotion Service responde con `success` y `error`. El Gateway convierte esas respuestas al formato común antes de enviarlas al frontend, y cambia sus códigos propios por los del contrato. Por ejemplo, `INVALID_PARAMETERS` pasa a ser `VALIDATION_ERROR`.
 
+## IP del usuario y rate limit
+
+El Gateway limita a 200 peticiones cada 15 minutos por IP. Al reenviar una petición, reemplaza la cabecera `X-Forwarded-For` con la IP del usuario, así que cualquier valor enviado por el cliente se descarta. Cada servicio confía en un salto (`app.set('trust proxy', 1)`) y aplica su propio límite por usuario, no por la IP del Gateway.
+
+Si el Gateway se despliega detrás de otro proxy, `TRUST_PROXY` indica cuántos proxies hay delante para obtener la IP real. En local queda en 0.
+
+## Trazabilidad
+
+Cada respuesta incluye la cabecera `X-Request-Id`. Si el frontend envía un `X-Request-Id` válido (letras, números, `.`, `_` o `-`, hasta 64 caracteres), el Gateway lo conserva; si no, genera un UUID. El mismo valor se reenvía al servicio y aparece en el log del Gateway:
+
+```
+[gateway] 0a3f78d1-f6db-47c4-a2d0-a2e559b84cab GET /api/movies/recommendations 200 812ms
+```
+
+El log no incluye la consulta de la URL ni las cabeceras, para no registrar datos del usuario.
+
 ## Errores
 
 Todos los errores usan este formato:
@@ -73,13 +89,15 @@ Todos los errores usan este formato:
 
 ## Variables de entorno
 
-El Gateway valida `PORT`, `WEB_URL`, `PROXY_TIMEOUT_MS` y las URL de los servicios al iniciar. Si un valor no es válido, no arranca e indica cuál debe corregirse. Si una variable está vacía, usa su valor por defecto.
+El Gateway valida `PORT`, `WEB_URL`, `PROXY_TIMEOUT_MS`, `TRUST_PROXY`, `LOG_REQUESTS` y las URL de los servicios al iniciar. Si un valor no es válido, no arranca e indica cuál debe corregirse. Si una variable está vacía, usa su valor por defecto.
 
 | Variable | Uso |
 |---|---|
 | `PORT` | Puerto del Gateway |
 | `WEB_URL` | Origen permitido por CORS |
 | `PROXY_TIMEOUT_MS` | Tiempo máximo de espera por servicio; por defecto, 15000 |
+| `TRUST_PROXY` | Proxies delante del Gateway; por defecto, 0 |
+| `LOG_REQUESTS` | `true` o `false`; por defecto registra todo, excepto en las pruebas |
 | `SUPABASE_URL` | Proyecto de Supabase |
 | `SUPABASE_JWT_ISSUER` | Emisor esperado del token |
 | `SUPABASE_JWT_AUDIENCE` | Audiencia esperada del token |
