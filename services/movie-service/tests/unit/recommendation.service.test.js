@@ -128,7 +128,7 @@ function createDatabase({ existing = [] } = {}) {
         state.existing.push(...data);
       })
     },
-    $queryRaw: vi.fn(async () => [])
+    $executeRaw: vi.fn(async () => 1)
   };
   const withUserContext = vi.fn(async (userId, callback) => callback(tx));
 

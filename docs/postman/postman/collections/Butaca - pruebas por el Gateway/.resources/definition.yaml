@@ -1,0 +1,24 @@
+$kind: collection
+description: |-
+  Recorre el flujo completo a través del API Gateway: login, emoción, recomendaciones y favoritos.
+
+  Antes de empezar, llena anonKey, email y password en las variables de la colección. Luego ejecuta las carpetas en orden, o la colección completa con Run.
+variables:
+  baseUrl: http://localhost:3000
+  supabaseUrl: https://kkdkyuxjgupyrokynevv.supabase.co
+  anonKey: ""
+  email: ""
+  password: ""
+  token: ""
+  userId: ""
+  emotionRecordId: ""
+  tmdbId: ""
+  mediaType: ""
+  favoriteBody: ""
+  favoriteId: ""
+auth:
+  - id: 759c3be0-7208-4e8a-87bc-9cff92e260c8
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{token}}"

@@ -1,0 +1,25 @@
+$kind: http-request
+description: Movie consulta la emoción en Emotion Service y busca en TMDB. Puede tardar unos segundos.
+url: "{{baseUrl}}/api/movies/recommendations"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "emotionRecordId": "{{emotionRecordId}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      const items = pm.response.json().data;
+      pm.test('Trae recomendaciones', () => pm.expect(items.length).to.be.above(0));
+      const r = items[0];
+      pm.collectionVariables.set('tmdbId', r.tmdbId);
+      pm.collectionVariables.set('mediaType', r.mediaType);
+      const favorito = { tmdbId: r.tmdbId, mediaType: r.mediaType, title: r.title, posterPath: r.posterPath ?? null, releaseDate: r.releaseDate ?? null, voteAverage: r.voteAverage ?? null };
+      pm.collectionVariables.set('favoriteBody', JSON.stringify(favorito));
+    language: text/javascript
+order: 1000
