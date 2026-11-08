@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/emotions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "emotion": "FRUSTRATION",
+      "source": "CAMERA",
+      "confidence": 0.87
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Responde 201', () => pm.response.to.have.status(201));
+    language: text/javascript
+order: 2000

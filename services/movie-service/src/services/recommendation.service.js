@@ -180,7 +180,9 @@ export function createRecommendationService(overrides = {}) {
 
     try {
       return await dependencies.withUserContext(userId, async (tx) => {
-        await tx.$queryRaw`
+        // pg_advisory_xact_lock devuelve void, y Prisma no puede leer ese tipo
+        // con $queryRaw. $executeRaw ejecuta la consulta sin leer el resultado.
+        await tx.$executeRaw`
           SELECT pg_advisory_xact_lock(
             hashtext(${userId}),
             hashtext(${emotionRecordId})

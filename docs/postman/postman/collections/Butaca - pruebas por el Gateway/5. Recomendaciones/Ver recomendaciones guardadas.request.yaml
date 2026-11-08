@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/movies/recommendations?emotionRecordId={{emotionRecordId}}"
+method: GET
+queryParams:
+  emotionRecordId: "{{emotionRecordId}}"
+scripts:
+  - type: afterResponse
+    code: pm.test('Responde 200', () => pm.response.to.have.status(200));
+    language: text/javascript
+order: 2000
