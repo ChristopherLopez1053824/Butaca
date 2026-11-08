@@ -1,0 +1,126 @@
+.camera-emotion-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.camera-emotion-block {
+  padding: 16px;
+  background: rgba(11, 19, 26, 0.36);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.camera-emotion-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.camera-emotion-heading > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: var(--lavender);
+}
+
+.camera-emotion-heading .eyebrow {
+  margin-bottom: 2px;
+}
+
+.camera-emotion-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.camera-emotion-status {
+  min-height: 2.6em;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.camera-emotion-status p {
+  margin: 0 0 10px;
+}
+
+.camera-emotion-detected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.camera-emotion-detected strong {
+  color: var(--text);
+}
+
+.camera-emotion-confidence {
+  display: inline-flex;
+  padding: 2px 8px;
+  color: var(--mint);
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(134, 239, 172, 0.1);
+  border: 1px solid rgba(134, 239, 172, 0.24);
+  border-radius: 999px;
+}
+
+.camera-emotion-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.camera-emotion-option {
+  padding: 8px 14px;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.camera-emotion-option:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: var(--border-strong);
+}
+
+.camera-emotion-option[aria-pressed='true'] {
+  color: #0b131a;
+  background: var(--lavender);
+  border-color: transparent;
+  box-shadow: 0 8px 20px rgba(196, 181, 253, 0.22);
+}
+
+.camera-emotion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.camera-emotion-selected {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.camera-emotion-confirmed {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  color: var(--mint);
+  font-size: 0.82rem;
+  background: rgba(134, 239, 172, 0.1);
+  border: 1px solid rgba(134, 239, 172, 0.28);
+  border-radius: 12px;
+}

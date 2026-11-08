@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEmotionDetection } from '../hooks/useEmotionDetection'
+import type { Emotion, EmotionResult, EmotionSource } from '../lib/emotions'
 import '../styles/camera.css'
+import { EmotionPanel } from './EmotionPanel'
 import { CameraIcon, SparklesIcon } from './icons'
 
 type CameraStatus = 'idle' | 'confirming' | 'requesting' | 'active' | 'error'
@@ -45,14 +48,27 @@ function getStatusLabel(status: CameraStatus) {
   return 'Cámara apagada'
 }
 
-export function CameraSection() {
+interface CameraSectionProps {
+  onEmotionConfirmed?: (result: EmotionResult) => void
+}
+
+export function CameraSection({ onEmotionConfirmed }: CameraSectionProps) {
   const [status, setStatus] = useState<CameraStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null)
+  const [selectionSource, setSelectionSource] =
+    useState<EmotionSource | null>(null)
+  const [selectedConfidence, setSelectedConfidence] = useState<number | null>(
+    null,
+  )
+  const [confirmedEmotion, setConfirmedEmotion] =
+    useState<EmotionResult | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const activateButtonRef = useRef<HTMLButtonElement>(null)
   const mountedRef = useRef(true)
   const requestRef = useRef(0)
+  const detection = useEmotionDetection(videoRef, status === 'active')
 
   const stopStream = useCallback(() => {
     const stream = streamRef.current
@@ -136,7 +152,13 @@ export function CameraSection() {
     stopStream()
     setError(null)
     setStatus('idle')
-  }, [stopStream])
+
+    if (selectionSource === 'CAMERA') {
+      setSelectedEmotion(null)
+      setSelectionSource(null)
+      setSelectedConfidence(null)
+    }
+  }, [stopStream, selectionSource])
 
   const openConfirmation = useCallback(() => {
     setError(null)
@@ -151,6 +173,49 @@ export function CameraSection() {
   const acceptConfirmation = useCallback(() => {
     void startCamera()
   }, [startCamera])
+
+  const handleSelectManual = useCallback((emotion: Emotion) => {
+    setSelectedEmotion(emotion)
+    setSelectionSource('MANUAL')
+    setSelectedConfidence(null)
+    setConfirmedEmotion(null)
+  }, [])
+
+  const handleUseDetected = useCallback(() => {
+    const detected = detection.detected
+
+    if (!detected) {
+      return
+    }
+
+    setSelectedEmotion(detected.emotion)
+    setSelectionSource('CAMERA')
+    setSelectedConfidence(detected.confidence)
+    setConfirmedEmotion(null)
+  }, [detection.detected])
+
+  const handleConfirmEmotion = useCallback(() => {
+    if (!selectedEmotion || !selectionSource) {
+      return
+    }
+
+    const result: EmotionResult = {
+      emotion: selectedEmotion,
+      source: selectionSource,
+    }
+
+    if (selectionSource === 'CAMERA' && selectedConfidence !== null) {
+      result.confidence = selectedConfidence
+    }
+
+    setConfirmedEmotion(result)
+    onEmotionConfirmed?.(result)
+  }, [
+    selectedEmotion,
+    selectionSource,
+    selectedConfidence,
+    onEmotionConfirmed,
+  ])
 
   useEffect(() => {
     if (status !== 'confirming') {
@@ -311,6 +376,17 @@ export function CameraSection() {
           </>
         )}
       </div>
+
+      <EmotionPanel
+        cameraActive={status === 'active'}
+        detection={detection}
+        selectedEmotion={selectedEmotion}
+        selectionSource={selectionSource}
+        confirmedEmotion={confirmedEmotion}
+        onSelectManual={handleSelectManual}
+        onUseDetected={handleUseDetected}
+        onConfirm={handleConfirmEmotion}
+      />
 
       {error && (
         <p className="form-error" role="alert">
