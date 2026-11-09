@@ -21,6 +21,12 @@ const recommendation: Recommendation = {
 
 const noop = () => undefined
 
+const favoriteProps = {
+  isFavorite: () => false,
+  isFavoritePending: () => false,
+  onToggleFavorite: noop,
+}
+
 afterEach(cleanup)
 
 describe('RecommendationsSection', () => {
@@ -32,6 +38,7 @@ describe('RecommendationsSection', () => {
         emotionLabel={null}
         error={null}
         onRetry={noop}
+        {...favoriteProps}
       />,
     )
 
@@ -48,6 +55,7 @@ describe('RecommendationsSection', () => {
         emotionLabel="Felicidad"
         error={null}
         onRetry={noop}
+        {...favoriteProps}
       />,
     )
 
@@ -69,6 +77,7 @@ describe('RecommendationsSection', () => {
         emotionLabel="Felicidad"
         error={null}
         onRetry={noop}
+        {...favoriteProps}
       />,
     )
 
@@ -84,6 +93,7 @@ describe('RecommendationsSection', () => {
         emotionLabel="Felicidad"
         error={null}
         onRetry={noop}
+        {...favoriteProps}
       />,
     )
 
@@ -102,6 +112,7 @@ describe('RecommendationsSection', () => {
         emotionLabel="Tristeza"
         error={null}
         onRetry={onRetry}
+        {...favoriteProps}
       />,
     )
 
@@ -121,6 +132,7 @@ describe('RecommendationsSection', () => {
         emotionLabel="Tristeza"
         error="Movie Service no disponible"
         onRetry={onRetry}
+        {...favoriteProps}
       />,
     )
 
@@ -131,5 +143,47 @@ describe('RecommendationsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar búsqueda' }))
 
     expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('permite marcar y desmarcar una recomendación como favorita', () => {
+    const onToggleFavorite = vi.fn()
+
+    const { rerender } = render(
+      <RecommendationsSection
+        status="ready"
+        recommendations={[recommendation]}
+        emotionLabel="Felicidad"
+        error={null}
+        onRetry={noop}
+        isFavorite={() => false}
+        isFavoritePending={() => false}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    )
+
+    const favoriteButton = screen.getByRole('button', {
+      name: 'Agregar Fight Club a favoritos',
+    })
+
+    fireEvent.click(favoriteButton)
+
+    expect(onToggleFavorite).toHaveBeenCalledWith(recommendation)
+
+    rerender(
+      <RecommendationsSection
+        status="ready"
+        recommendations={[recommendation]}
+        emotionLabel="Felicidad"
+        error={null}
+        onRetry={noop}
+        isFavorite={() => true}
+        isFavoritePending={() => false}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Quitar Fight Club de favoritos' }),
+    ).toBeTruthy()
   })
 })

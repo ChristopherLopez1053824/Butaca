@@ -9,12 +9,18 @@ interface MovieCardProps {
   recommendation: Recommendation
   emotionLabel: string
   accent: Accent
+  isFavorite: boolean
+  isFavoritePending: boolean
+  onToggleFavorite: () => void
 }
 
 export function MovieCard({
   recommendation,
   emotionLabel,
   accent,
+  isFavorite,
+  isFavoritePending,
+  onToggleFavorite,
 }: MovieCardProps) {
   const [imageFailed, setImageFailed] = useState(false)
   const mediaLabel =
@@ -50,9 +56,20 @@ export function MovieCard({
         )}
 
         <span className="movie-placeholder-badge">{mediaLabel}</span>
-        <span className="movie-favorite" aria-hidden="true">
-          <HeartIcon />
-        </span>
+        <button
+          type="button"
+          className={`movie-favorite${isFavorite ? ' is-favorite' : ''}`}
+          aria-pressed={isFavorite}
+          aria-label={
+            isFavorite
+              ? `Quitar ${recommendation.title} de favoritos`
+              : `Agregar ${recommendation.title} a favoritos`
+          }
+          disabled={isFavoritePending}
+          onClick={onToggleFavorite}
+        >
+          <HeartIcon fill={isFavorite ? 'currentColor' : 'none'} />
+        </button>
       </div>
 
       <div className="movie-info">

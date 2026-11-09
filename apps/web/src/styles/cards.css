@@ -117,6 +117,23 @@
   border: 1px solid rgba(249, 168, 212, 0.24);
   border-radius: 50%;
   backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.movie-favorite:hover {
+  background: rgba(11, 19, 26, 0.86);
+  transform: scale(1.06);
+}
+
+.movie-favorite.is-favorite {
+  background: rgba(249, 168, 212, 0.22);
+}
+
+.movie-favorite:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .movie-favorite svg {
@@ -234,6 +251,7 @@
 }
 
 .favorite-poster {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 2 / 3;
@@ -248,6 +266,48 @@
   width: 26px;
   height: 26px;
   opacity: 0.8;
+}
+
+.favorite-poster-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.favorite-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--pink);
+  background: rgba(11, 19, 26, 0.72);
+  border: 1px solid rgba(249, 168, 212, 0.3);
+  border-radius: 50%;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.favorite-remove:hover {
+  background: rgba(11, 19, 26, 0.9);
+  transform: scale(1.06);
+}
+
+.favorite-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.favorite-remove svg {
+  width: 13px;
+  height: 13px;
 }
 
 .favorite-info {
@@ -324,52 +384,16 @@
 
 .chart-shell {
   position: relative;
+  padding: 4px 2px;
   border-radius: 14px;
   background:
     linear-gradient(rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.2)),
     radial-gradient(circle at 50% 40%, rgba(196, 181, 253, 0.06), transparent 70%);
 }
 
-.line-chart {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 8px;
-  min-height: 184px;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 10px 0 30px;
-  color: var(--muted);
-  font-size: 0.62rem;
-  text-align: right;
-}
-
-.chart-plot {
-  position: relative;
-  min-height: 174px;
-  padding-bottom: 26px;
-}
-
-.chart-grid-lines {
-  position: absolute;
-  inset: 0 0 26px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.chart-grid-lines span {
-  border-top: 1px dashed rgba(148, 163, 184, 0.16);
-}
-
 .chart-empty {
-  position: absolute;
-  inset: 0 0 26px;
-  z-index: 2;
   display: flex;
+  min-height: 184px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -397,79 +421,42 @@
   line-height: 1.45;
 }
 
-.chart-x-axis {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  color: var(--muted);
-  font-size: 0.62rem;
-  text-align: center;
+.chart-table-toggle {
+  margin: 8px 6px 0;
 }
 
-.bar-chart {
-  min-height: 214px;
-}
-
-.bar-chart-plot {
-  position: relative;
-  min-height: 214px;
-  padding: 8px 4px 0;
-}
-
-.bar-columns {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: end;
-  gap: 8px;
-  padding: 8px 4px 4px;
-}
-
-.bar-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  height: 100%;
-}
-
-.bar-track {
-  flex: 1;
+.chart-table {
   width: 100%;
-  max-width: 40px;
-  min-height: 0;
-  background: linear-gradient(180deg, var(--accent-soft), transparent 82%);
-  border: 1px dashed var(--accent-border);
-  border-radius: 10px 10px 4px 4px;
-  opacity: 0.45;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 0.72rem;
 }
 
-.bar-chart .chart-empty {
-  inset: 12px 0 40px;
+.chart-table th,
+.chart-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
 }
 
-.bar-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+.chart-table th {
   color: var(--muted);
-  font-size: 0.6rem;
-  line-height: 1.2;
-  text-align: center;
+  font-weight: 600;
 }
 
-.legend-dot {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
-  border-radius: 50%;
+.chart-table td {
+  color: var(--text-soft);
+}
+
+.dashboard-partial-notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  background: rgba(253, 230, 138, 0.08);
+  border: 1px solid rgba(253, 230, 138, 0.22);
+  border-radius: 10px;
 }
 
 @media (max-width: 1100px) {

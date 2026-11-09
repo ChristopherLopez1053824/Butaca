@@ -8,8 +8,11 @@ import type { RecommendationsStatus } from '../components/RecommendationsSection
 import { ServiceStatusPanel } from '../components/ServiceStatusPanel'
 import { useEmotionFlow } from '../hooks/useEmotionFlow'
 import type { EmotionFlowStatus } from '../hooks/useEmotionFlow'
+import { useFavorites } from '../hooks/useFavorites'
 import { getApiEmotionLabel } from '../lib/emotionContract'
 import type { EmotionSaveStatus } from '../lib/emotions'
+import type { Recommendation } from '../services/recommendations'
+import type { Favorite } from '../services/favorites'
 import '../styles/cards.css'
 import '../styles/dashboard.css'
 
@@ -51,6 +54,7 @@ export function DashboardPage() {
     clearError,
   } = useAuth()
   const emotionFlow = useEmotionFlow()
+  const favorites = useFavorites()
   const saveStatus = getSaveStatus(
     emotionFlow.status,
     emotionFlow.emotionRecord !== null,
@@ -71,6 +75,29 @@ export function DashboardPage() {
   function handleSignOut() {
     clearError()
     void signOut()
+  }
+
+  function handleToggleFavorite(recommendation: Recommendation) {
+    if (favorites.isFavorite(recommendation.tmdbId, recommendation.mediaType)) {
+      void favorites.removeFavorite(
+        recommendation.tmdbId,
+        recommendation.mediaType,
+      )
+      return
+    }
+
+    void favorites.addFavorite({
+      tmdbId: recommendation.tmdbId,
+      mediaType: recommendation.mediaType,
+      title: recommendation.title,
+      posterPath: recommendation.posterPath,
+      releaseDate: recommendation.releaseDate,
+      voteAverage: recommendation.voteAverage,
+    })
+  }
+
+  function handleRemoveFavorite(favorite: Favorite) {
+    void favorites.removeFavorite(favorite.tmdbId, favorite.mediaType)
   }
 
   return (
@@ -103,10 +130,22 @@ export function DashboardPage() {
           onRetry={() => {
             void emotionFlow.retryRecommendations()
           }}
+          isFavorite={favorites.isFavorite}
+          isFavoritePending={favorites.isPending}
+          onToggleFavorite={handleToggleFavorite}
         />
 
         <div className="dashboard-lower">
-          <FavoritesSection />
+          <FavoritesSection
+            status={favorites.status}
+            favorites={favorites.favorites}
+            error={favorites.error}
+            isRemoving={favorites.isPending}
+            onRemove={handleRemoveFavorite}
+            onRetry={() => {
+              void favorites.reload()
+            }}
+          />
           <EmotionDashboard />
         </div>
       </div>

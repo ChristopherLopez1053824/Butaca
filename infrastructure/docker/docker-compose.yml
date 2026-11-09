@@ -104,10 +104,20 @@ services:
     <<: *service-base
     command: ["pnpm", "--filter", "@butaca/dashboard-service", "start"]
     environment:
-      <<: *runtime-environment
+      <<: [*runtime-environment, *supabase-environment]
       PORT: 3005
+      EMOTION_SERVICE_URL: http://emotion-service:3002
+      EMOTION_SERVICE_TIMEOUT_MS: ${EMOTION_SERVICE_TIMEOUT_MS:-5000}
+      MOVIE_SERVICE_URL: http://movie-service:3003
+      MOVIE_SERVICE_TIMEOUT_MS: ${MOVIE_SERVICE_TIMEOUT_MS:-5000}
+      FAVORITES_SERVICE_URL: http://favorites-service:3004
+      FAVORITES_SERVICE_TIMEOUT_MS: ${FAVORITES_SERVICE_TIMEOUT_MS:-5000}
     ports:
       - "127.0.0.1:3005:3005"
+    depends_on:
+      - emotion-service
+      - movie-service
+      - favorites-service
 
   meme-service:
     <<: *service-base

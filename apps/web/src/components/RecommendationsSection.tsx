@@ -17,6 +17,15 @@ interface RecommendationsSectionProps {
   emotionLabel: string | null
   error: string | null
   onRetry: () => void
+  isFavorite: (
+    tmdbId: number,
+    mediaType: Recommendation['mediaType'],
+  ) => boolean
+  isFavoritePending: (
+    tmdbId: number,
+    mediaType: Recommendation['mediaType'],
+  ) => boolean
+  onToggleFavorite: (recommendation: Recommendation) => void
 }
 
 const recommendationAccents: Accent[] = [
@@ -33,6 +42,9 @@ export function RecommendationsSection({
   emotionLabel,
   error,
   onRetry,
+  isFavorite,
+  isFavoritePending,
+  onToggleFavorite,
 }: RecommendationsSectionProps) {
   const hasRecommendations = status === 'ready' && recommendations.length > 0
   const viewStatus = status === 'ready' && !hasRecommendations ? 'empty' : status
@@ -138,6 +150,15 @@ export function RecommendationsSection({
               accent={
                 recommendationAccents[index % recommendationAccents.length]
               }
+              isFavorite={isFavorite(
+                recommendation.tmdbId,
+                recommendation.mediaType,
+              )}
+              isFavoritePending={isFavoritePending(
+                recommendation.tmdbId,
+                recommendation.mediaType,
+              )}
+              onToggleFavorite={() => onToggleFavorite(recommendation)}
             />
           ))}
         </div>

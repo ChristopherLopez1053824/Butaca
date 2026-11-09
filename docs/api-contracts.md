@@ -11,7 +11,7 @@ Este contrato define cómo se comunican el frontend, el API Gateway y los micros
 | Favorites Service | Implementado en la rama `User-and-Favorite-service` |
 | Movie Service | Implementado en la rama `MovieService` |
 | Emotion Service | Implementado en la rama `feature/emotion-service` |
-| Dashboard Service | Propuesto |
+| Dashboard Service | Implementado en la rama `Desarrollo` |
 
 ## 1. Reglas generales
 
@@ -304,4 +304,7 @@ Las respuestas entre servicios usan el formato de este contrato, excepto Emotion
 ## 11. Temas por aprobar
 
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
-- Confirmar el formato de `GET /api/dashboard/summary`.
+
+### Nota de implementación de `GET /api/dashboard/summary`
+
+Movie Service no expone `emotionRecordId` en `GET /recommendations` (ver sección 7), así que Dashboard Service no puede agrupar recomendaciones por emoción con una sola llamada. En su lugar: pide el historial de emociones a Emotion Service (hasta 200 registros más recientes del rango solicitado), y por cada registro de emoción distinto (hasta 30) consulta `GET /recommendations?emotionRecordId=<id>` en Movie Service para conocer su `mediaType`. Ninguna de las dos llamadas cambia el contrato de Emotion ni de Movie Service. Si en el futuro se agrega `emotionRecordId` a `GET /recommendations`, este paso puede simplificarse a una sola llamada.
