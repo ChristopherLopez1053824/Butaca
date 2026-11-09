@@ -226,6 +226,20 @@
   }
 }
 
+.recommendations-load-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.recommendations-load-more .recommendation-error {
+  max-width: 48ch;
+  margin: 0;
+}
+
 .favorite-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));

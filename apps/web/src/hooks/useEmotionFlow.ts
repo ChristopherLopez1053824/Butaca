@@ -18,17 +18,22 @@ export type EmotionFlowStatus =
   | 'error-saving-emotion'
   | 'error-loading-recommendations'
 
+export type LoadMoreStatus = 'idle' | 'loading' | 'error'
+
 export interface EmotionFlowState {
   status: EmotionFlowStatus
   emotionRecord: EmotionRecord | null
   recommendations: Recommendation[]
   pagination: RecommendationPagination | null
   error: Error | null
+  loadMoreStatus: LoadMoreStatus
+  loadMoreError: Error | null
 }
 
 export interface EmotionFlow extends EmotionFlowState {
   confirmEmotion: (result: EmotionResult) => Promise<void>
   retryRecommendations: () => Promise<void>
+  loadMoreRecommendations: () => Promise<void>
   reset: () => void
 }
 
@@ -38,6 +43,12 @@ const INITIAL_STATE: EmotionFlowState = {
   recommendations: [],
   pagination: null,
   error: null,
+  loadMoreStatus: 'idle',
+  loadMoreError: null,
+}
+
+function recommendationKey(item: Recommendation): string {
+  return `${item.mediaType}:${item.tmdbId}`
 }
 
 function toError(error: unknown, fallback: string): Error {
@@ -52,6 +63,7 @@ export function useEmotionFlow(): EmotionFlow {
   const [state, setState] = useState<EmotionFlowState>(INITIAL_STATE)
   const requestIdRef = useRef(0)
   const savingRef = useRef(false)
+  const loadingMoreRef = useRef(false)
 
   const loadRecommendations = useCallback(
     async (record: EmotionRecord, requestId: number) => {
@@ -61,6 +73,8 @@ export function useEmotionFlow(): EmotionFlow {
         recommendations: [],
         pagination: null,
         error: null,
+        loadMoreStatus: 'idle',
+        loadMoreError: null,
       })
 
       try {
@@ -78,6 +92,8 @@ export function useEmotionFlow(): EmotionFlow {
           recommendations: result.data,
           pagination: result.pagination,
           error: null,
+          loadMoreStatus: 'idle',
+          loadMoreError: null,
         })
       } catch (error) {
         if (requestId !== requestIdRef.current) {
@@ -93,6 +109,8 @@ export function useEmotionFlow(): EmotionFlow {
             error,
             'No pudimos cargar las recomendaciones. Inténtalo de nuevo.',
           ),
+          loadMoreStatus: 'idle',
+          loadMoreError: null,
         })
       }
     },
@@ -115,6 +133,8 @@ export function useEmotionFlow(): EmotionFlow {
         recommendations: [],
         pagination: null,
         error: null,
+        loadMoreStatus: 'idle',
+        loadMoreError: null,
       })
 
       let record: EmotionRecord
@@ -133,6 +153,8 @@ export function useEmotionFlow(): EmotionFlow {
               error,
               'No pudimos guardar tu emoción. Inténtalo de nuevo.',
             ),
+            loadMoreStatus: 'idle',
+            loadMoreError: null,
           })
         }
 
@@ -161,9 +183,81 @@ export function useEmotionFlow(): EmotionFlow {
     await loadRecommendations(record, requestId)
   }, [loadRecommendations, state.emotionRecord])
 
+  const loadMoreRecommendations = useCallback(async () => {
+    if (loadingMoreRef.current || savingRef.current) {
+      return
+    }
+
+    const record = state.emotionRecord
+    const pagination = state.pagination
+
+    if (
+      state.status !== 'ready'
+      || !record
+      || !pagination?.hasMore
+      || !pagination.nextCursor
+    ) {
+      return
+    }
+
+    const requestId = requestIdRef.current
+    const cursor = pagination.nextCursor
+    loadingMoreRef.current = true
+
+    setState((previous) => ({
+      ...previous,
+      loadMoreStatus: 'loading',
+      loadMoreError: null,
+    }))
+
+    try {
+      const result = await requestRecommendations({
+        emotionRecordId: record.id,
+        cursor,
+      })
+
+      if (requestId !== requestIdRef.current) {
+        return
+      }
+
+      setState((previous) => {
+        const existingKeys = new Set(
+          previous.recommendations.map(recommendationKey),
+        )
+        const newItems = result.data.filter(
+          (item) => !existingKeys.has(recommendationKey(item)),
+        )
+
+        return {
+          ...previous,
+          recommendations: [...previous.recommendations, ...newItems],
+          pagination: result.pagination,
+          loadMoreStatus: 'idle',
+          loadMoreError: null,
+        }
+      })
+    } catch (error) {
+      if (requestId !== requestIdRef.current) {
+        return
+      }
+
+      setState((previous) => ({
+        ...previous,
+        loadMoreStatus: 'error',
+        loadMoreError: toError(
+          error,
+          'No pudimos cargar más recomendaciones. Inténtalo de nuevo.',
+        ),
+      }))
+    } finally {
+      loadingMoreRef.current = false
+    }
+  }, [state.status, state.emotionRecord, state.pagination])
+
   const reset = useCallback(() => {
     requestIdRef.current += 1
     savingRef.current = false
+    loadingMoreRef.current = false
     setState(INITIAL_STATE)
   }, [])
 
@@ -171,6 +265,7 @@ export function useEmotionFlow(): EmotionFlow {
     ...state,
     confirmEmotion,
     retryRecommendations,
+    loadMoreRecommendations,
     reset,
   }
 }

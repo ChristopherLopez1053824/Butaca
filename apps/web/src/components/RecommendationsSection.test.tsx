@@ -27,6 +27,13 @@ const favoriteProps = {
   onToggleFavorite: noop,
 }
 
+const loadMoreProps = {
+  pagination: null,
+  loadMoreStatus: 'idle' as const,
+  loadMoreError: null,
+  onLoadMore: noop,
+}
+
 afterEach(cleanup)
 
 describe('RecommendationsSection', () => {
@@ -39,6 +46,7 @@ describe('RecommendationsSection', () => {
         error={null}
         onRetry={noop}
         {...favoriteProps}
+        {...loadMoreProps}
       />,
     )
 
@@ -56,6 +64,7 @@ describe('RecommendationsSection', () => {
         error={null}
         onRetry={noop}
         {...favoriteProps}
+        {...loadMoreProps}
       />,
     )
 
@@ -78,6 +87,7 @@ describe('RecommendationsSection', () => {
         error={null}
         onRetry={noop}
         {...favoriteProps}
+        {...loadMoreProps}
       />,
     )
 
@@ -94,6 +104,7 @@ describe('RecommendationsSection', () => {
         error={null}
         onRetry={noop}
         {...favoriteProps}
+        {...loadMoreProps}
       />,
     )
 
@@ -113,6 +124,7 @@ describe('RecommendationsSection', () => {
         error={null}
         onRetry={onRetry}
         {...favoriteProps}
+        {...loadMoreProps}
       />,
     )
 
@@ -133,6 +145,7 @@ describe('RecommendationsSection', () => {
         error="Movie Service no disponible"
         onRetry={onRetry}
         {...favoriteProps}
+        {...loadMoreProps}
       />,
     )
 
@@ -158,6 +171,7 @@ describe('RecommendationsSection', () => {
         isFavorite={() => false}
         isFavoritePending={() => false}
         onToggleFavorite={onToggleFavorite}
+        {...loadMoreProps}
       />,
     )
 
@@ -179,11 +193,128 @@ describe('RecommendationsSection', () => {
         isFavorite={() => true}
         isFavoritePending={() => false}
         onToggleFavorite={onToggleFavorite}
+        {...loadMoreProps}
       />,
     )
 
     expect(
       screen.getByRole('button', { name: 'Quitar Fight Club de favoritos' }),
     ).toBeTruthy()
+  })
+
+  it('muestra "Ver más" cuando hay más resultados y llama a onLoadMore', () => {
+    const onLoadMore = vi.fn()
+
+    render(
+      <RecommendationsSection
+        status="ready"
+        recommendations={[recommendation]}
+        emotionLabel="Felicidad"
+        error={null}
+        onRetry={noop}
+        {...favoriteProps}
+        pagination={{
+          limit: 20,
+          returned: 1,
+          movieCount: 1,
+          tvCount: 0,
+          hasMore: true,
+          nextCursor: 'cursor-1',
+        }}
+        loadMoreStatus="idle"
+        loadMoreError={null}
+        onLoadMore={onLoadMore}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Ver más' })
+    fireEvent.click(button)
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1)
+  })
+
+  it('oculta "Ver más" cuando no quedan más resultados', () => {
+    render(
+      <RecommendationsSection
+        status="ready"
+        recommendations={[recommendation]}
+        emotionLabel="Felicidad"
+        error={null}
+        onRetry={noop}
+        {...favoriteProps}
+        pagination={{
+          limit: 20,
+          returned: 1,
+          movieCount: 1,
+          tvCount: 0,
+          hasMore: false,
+          nextCursor: null,
+        }}
+        loadMoreStatus="idle"
+        loadMoreError={null}
+        onLoadMore={noop}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Ver más' })).toBeNull()
+  })
+
+  it('deshabilita el botón y muestra "Cargando…" mientras se cargan más resultados', () => {
+    render(
+      <RecommendationsSection
+        status="ready"
+        recommendations={[recommendation]}
+        emotionLabel="Felicidad"
+        error={null}
+        onRetry={noop}
+        {...favoriteProps}
+        pagination={{
+          limit: 20,
+          returned: 1,
+          movieCount: 1,
+          tvCount: 0,
+          hasMore: true,
+          nextCursor: 'cursor-1',
+        }}
+        loadMoreStatus="loading"
+        loadMoreError={null}
+        onLoadMore={noop}
+      />,
+    )
+
+    const button = screen.getByRole('button', {
+      name: 'Cargando…',
+    }) as HTMLButtonElement
+
+    expect(button.disabled).toBe(true)
+  })
+
+  it('muestra un mensaje de error comprensible si falla "Ver más"', () => {
+    render(
+      <RecommendationsSection
+        status="ready"
+        recommendations={[recommendation]}
+        emotionLabel="Felicidad"
+        error={null}
+        onRetry={noop}
+        {...favoriteProps}
+        pagination={{
+          limit: 20,
+          returned: 1,
+          movieCount: 1,
+          tvCount: 0,
+          hasMore: true,
+          nextCursor: 'cursor-1',
+        }}
+        loadMoreStatus="error"
+        loadMoreError="Movie Service no disponible"
+        onLoadMore={noop}
+      />,
+    )
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Movie Service no disponible',
+    )
+    expect(screen.getByText('Fight Club')).toBeTruthy()
   })
 })

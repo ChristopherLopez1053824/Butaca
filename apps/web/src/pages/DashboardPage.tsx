@@ -125,10 +125,16 @@ export function DashboardPage() {
         <RecommendationsSection
           status={recommendationsStatus}
           recommendations={emotionFlow.recommendations}
+          pagination={emotionFlow.pagination}
           emotionLabel={emotionLabel}
           error={recommendationsError}
           onRetry={() => {
             void emotionFlow.retryRecommendations()
+          }}
+          loadMoreStatus={emotionFlow.loadMoreStatus}
+          loadMoreError={emotionFlow.loadMoreError?.message ?? null}
+          onLoadMore={() => {
+            void emotionFlow.loadMoreRecommendations()
           }}
           isFavorite={favorites.isFavorite}
           isFavoritePending={favorites.isPending}

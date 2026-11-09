@@ -1,4 +1,8 @@
-import type { Recommendation } from '../services/recommendations'
+import type { LoadMoreStatus } from '../hooks/useEmotionFlow'
+import type {
+  Recommendation,
+  RecommendationPagination,
+} from '../services/recommendations'
 import type { Accent } from './accent'
 import { FilmIcon } from './icons'
 import { MovieCard } from './MovieCard'
@@ -14,9 +18,13 @@ export type RecommendationsStatus =
 interface RecommendationsSectionProps {
   status: RecommendationsStatus
   recommendations: Recommendation[]
+  pagination: RecommendationPagination | null
   emotionLabel: string | null
   error: string | null
   onRetry: () => void
+  loadMoreStatus: LoadMoreStatus
+  loadMoreError: string | null
+  onLoadMore: () => void
   isFavorite: (
     tmdbId: number,
     mediaType: Recommendation['mediaType'],
@@ -39,9 +47,13 @@ const recommendationAccents: Accent[] = [
 export function RecommendationsSection({
   status,
   recommendations,
+  pagination,
   emotionLabel,
   error,
   onRetry,
+  loadMoreStatus,
+  loadMoreError,
+  onLoadMore,
   isFavorite,
   isFavoritePending,
   onToggleFavorite,
@@ -161,6 +173,26 @@ export function RecommendationsSection({
               onToggleFavorite={() => onToggleFavorite(recommendation)}
             />
           ))}
+        </div>
+      )}
+
+      {hasRecommendations && pagination?.hasMore && (
+        <div className="recommendations-load-more">
+          <button
+            type="button"
+            className="button button-secondary button-small"
+            onClick={onLoadMore}
+            disabled={loadMoreStatus === 'loading'}
+          >
+            {loadMoreStatus === 'loading' ? 'Cargando…' : 'Ver más'}
+          </button>
+
+          {loadMoreStatus === 'error' && (
+            <p className="form-error recommendation-error" role="alert">
+              {loadMoreError
+                ?? 'No pudimos cargar más recomendaciones. Inténtalo de nuevo.'}
+            </p>
+          )}
         </div>
       )}
     </section>
