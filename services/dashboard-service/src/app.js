@@ -1,6 +1,8 @@
 import express from 'express';
+import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
+import { requireAuth } from '@butaca/auth';
 
 const app = express();
 
@@ -10,20 +12,165 @@ app.disable('x-powered-by');
 // en X-Forwarded-For. Confiar en un salto permite aplicar el rate limit por usuario.
 app.set('trust proxy', 1);
 app.use(helmet());
-app.use(express.json({ limit: '1mb' }));
+app.use(cors());
+app.use(express.json());
 
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false
-}));
+// Direcciones base de los microservicios aguas abajo
+const EMOTION_SERVICE_URL = process.env.EMOTION_SERVICE_URL || 'http://localhost:3002';
+const MOVIE_SERVICE_URL = process.env.MOVIE_SERVICE_URL || 'http://localhost:3003';
+const FAVORITES_SERVICE_URL = process.env.FAVORITES_SERVICE_URL || 'http://localhost:3004';
+const MEME_SERVICE_URL = process.env.MEME_SERVICE_URL || 'http://localhost:3006';
 
+// Validacion de filtros temporales opcionales
+const schemaFiltrosDashboard = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional()
+});
+
+// Funcion auxiliar de consulta HTTP con limite de tiempo estricto
+async function consultarServicio(url, tokenAutorizacion, tiempoLimiteMs = 3000) {
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), tiempoLimiteMs);
+
+  try {
+    const respuesta = await fetch(url, {
+      headers: {
+        'Authorization': tokenAutorizacion,
+        'Content-Type': 'application/json'
+      },
+      signal: controlador.signal
+    });
+
+    if (!respuesta.ok) {
+      throw new Error(`Fallo HTTP ${respuesta.status} al consultar ${url}`);
+    }
+
+    const cuerpoJson = await respuesta.json();
+    return cuerpoJson.data || [];
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
+// 1. Endpoint publico de salud
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'dashboard-service',
     timestamp: new Date().toISOString()
+  });
+});
+
+// Enrutador protegido del panel
+const routerDashboard = express.Router();
+routerDashboard.use(requireAuth);
+
+// 2. Resumen consolidado del usuario
+routerDashboard.get('/summary', async (req, res, next) => {
+  try {
+    const validacion = schemaFiltrosDashboard.safeParse(req.query);
+    if (!validacion.success) {
+      return res.status(400).json({
+        status: 'error',
+        code: 'VALIDATION_ERROR',
+        message: 'Parametros de fecha invalidos (deben ser formato ISO 8601)',
+        details: validacion.error.errors
+      });
+    }
+
+    const { from, to } = validacion.data;
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
+    const tokenAutorizacion = req.headers.authorization;
+
+    // Consultas en paralelo con tolerancia a fallos
+    const [resEmociones, resPeliculas, resFavoritos, resMemes] = await Promise.allSettled([
+      consultarServicio(`${EMOTION_SERVICE_URL}/api/emotions${queryString}`, tokenAutorizacion),
+      consultarServicio(`${MOVIE_SERVICE_URL}/api/movies/recommendations${queryString}`, tokenAutorizacion),
+      consultarServicio(`${FAVORITES_SERVICE_URL}/api/favorites`, tokenAutorizacion),
+      consultarServicio(`${MEME_SERVICE_URL}/api/memes/history${queryString}`, tokenAutorizacion)
+    ]);
+
+    const serviciosNoDisponibles = [];
+
+    const emociones = resEmociones.status === 'fulfilled'
+      ? resEmociones.value
+      : (serviciosNoDisponibles.push('emotion-service'), []);
+
+    const recomendaciones = resPeliculas.status === 'fulfilled'
+      ? resPeliculas.value
+      : (serviciosNoDisponibles.push('movie-service'), []);
+
+    const favoritos = resFavoritos.status === 'fulfilled'
+      ? resFavoritos.value
+      : (serviciosNoDisponibles.push('favorites-service'), []);
+
+    const historialMemes = resMemes.status === 'fulfilled'
+      ? resMemes.value
+      : (serviciosNoDisponibles.push('meme-service'), []);
+
+    // Conteo y agregacion de datos
+    const frecuenciaEmociones = {};
+    for (const item of emociones) {
+      const emocion = item.emotion || 'NEUTRAL';
+      frecuenciaEmociones[emocion] = (frecuenciaEmociones[emocion] || 0) + 1;
+    }
+
+    const evolucionAnimo = emociones.map((item) => ({
+      id: item.id,
+      emotion: item.emotion,
+      source: item.source,
+      confidence: item.confidence,
+      createdAt: item.createdAt
+    }));
+
+    return res.status(200).json({
+      status: 'ok',
+      data: {
+        resumen: {
+          totalEmociones: emociones.length,
+          totalRecomendaciones: recomendaciones.length,
+          totalFavoritos: favoritos.length,
+          totalMemes: historialMemes.length
+        },
+        frecuenciaEmociones,
+        evolucionAnimo,
+        ultimasRecomendaciones: recomendaciones.slice(0, 5),
+        ultimosMemes: historialMemes.slice(0, 5),
+        advertencias: serviciosNoDisponibles.length > 0
+          ? { serviciosNoDisponibles }
+          : null
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Compatibilidad de rutas directa y via API Gateway
+app.use('/api/dashboard', routerDashboard);
+app.use('/', routerDashboard);
+
+// Manejador 404 estandarizado
+app.use((req, res) => {
+  res.status(404).json({
+    status: 'error',
+    code: 'NOT_FOUND',
+    message: `Ruta ${req.originalUrl} no encontrada`
+  });
+});
+
+// Manejador global de errores
+app.use((err, req, res, next) => {
+  const statusCode = err.status || 500;
+  const errorCode = err.code || 'INTERNAL_ERROR';
+  res.status(statusCode).json({
+    status: 'error',
+    code: errorCode,
+    message: err.message || 'Error interno del servidor en dashboard-service'
   });
 });
 
