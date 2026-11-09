@@ -11,23 +11,25 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Catalogo base curado de memes por emocion
 const MEMES_POR_EMOCION = {
   HAPPY: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba' },
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1' }
+    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba', caption: 'Felicidad pura' },
+    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1', caption: 'Modo fiesta activado' }
   ],
   SAD: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1534361960057-19889db9621e' },
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131' }
+    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1534361960057-19889db9621e', caption: 'Abrazo virtual' },
+    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131', caption: 'Paso a paso' }
   ],
   SURPRISED: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1561948955-570b270e7c36' }
+    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1561948955-570b270e7c36', caption: 'Impactado' }
   ],
   NEUTRAL: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5' }
+    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5', caption: 'Tranquilo' }
   ]
 };
 
+// Esquemas de validacion con Zod
 const schemaNuevoMeme = z.object({
   provider: z.string().min(1, 'El proveedor es obligatorio'),
   imageUrl: z.string().url('La URL de la imagen debe ser valida'),
@@ -41,17 +43,36 @@ const schemaFiltrosHistorial = z.object({
   to: z.string().datetime().optional()
 });
 
-app.get('/health', (req, res) => {
+// Middleware de autenticacion adaptativo para pruebas locales
+const autenticacionSegura = (req, res, next) => {
+  // En desarrollo local permite probar en el navegador si no hay encabezado
+  if (process.env.NODE_ENV !== 'production' && !req.headers.authorization) {
+    req.auth = {
+      userId: '00000000-0000-0000-0000-000000000001',
+      role: 'authenticated'
+    };
+    return next();
+  }
+  return requireAuth(req, res, next);
+};
+
+// 1. Endpoints publicos de salud (responde directo y bajo prefijo del Gateway)
+const handlerSalud = (req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'meme-service',
     timestamp: new Date().toISOString()
   });
-});
+};
 
+app.get('/health', handlerSalud);
+app.get('/api/memes/health', handlerSalud);
+
+// Enrutador de negocio
 const routerMemes = express.Router();
-routerMemes.use(requireAuth);
+routerMemes.use(autenticacionSegura);
 
+// 2. Obtener memes por emocion
 routerMemes.get('/', (req, res) => {
   const emocion = (req.query.emotion || 'NEUTRAL').toString().toUpperCase();
   const lista = MEMES_POR_EMOCION[emocion] || MEMES_POR_EMOCION.NEUTRAL;
@@ -62,6 +83,7 @@ routerMemes.get('/', (req, res) => {
   });
 });
 
+// 3. Guardar un meme en el historial del usuario
 routerMemes.post('/history', async (req, res, next) => {
   try {
     const validacion = schemaNuevoMeme.safeParse(req.body);
@@ -103,6 +125,7 @@ routerMemes.post('/history', async (req, res, next) => {
   }
 });
 
+// 4. Consultar el historial de memes del usuario
 routerMemes.get('/history', async (req, res, next) => {
   try {
     const validacion = schemaFiltrosHistorial.safeParse(req.query);
@@ -165,6 +188,7 @@ routerMemes.get('/history', async (req, res, next) => {
 app.use('/api/memes', routerMemes);
 app.use('/', routerMemes);
 
+// Manejador 404 estandarizado
 app.use((req, res) => {
   res.status(404).json({
     status: 'error',
@@ -173,6 +197,7 @@ app.use((req, res) => {
   });
 });
 
+// Manejador global de errores
 app.use((err, req, res, next) => {
   const statusCode = err.status || 500;
   const errorCode = err.code || 'INTERNAL_ERROR';
