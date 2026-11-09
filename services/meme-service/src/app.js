@@ -43,10 +43,11 @@ const schemaFiltrosHistorial = z.object({
   to: z.string().datetime().optional()
 });
 
-// Middleware de autenticacion adaptativo para pruebas locales
+/// Middleware de autenticacion adaptativo: solo permite bypass en desarrollo interactivo
 const autenticacionSegura = (req, res, next) => {
-  // En desarrollo local permite probar en el navegador si no hay encabezado
-  if (process.env.NODE_ENV !== 'production' && !req.headers.authorization) {
+  const esDesarrolloInteractivo = process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test';
+  
+  if (esDesarrolloInteractivo && !req.headers.authorization) {
     req.auth = {
       userId: '00000000-0000-0000-0000-000000000001',
       role: 'authenticated'
