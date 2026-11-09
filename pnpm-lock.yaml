@@ -232,6 +232,12 @@ importers:
 
   services/favorites-service:
     dependencies:
+      '@butaca/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@butaca/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       cors:
         specifier: ^2.8.6
         version: 2.8.6

@@ -27,12 +27,6 @@ vi.mock('@butaca/auth', () => ({
 
 vi.mock('@butaca/database', () => ({ withUserContext }));
 vi.mock('../../src/services/verse.service.js', () => ({ getVerseForEmotion }));
-vi.mock('../../src/config/env.js', () => ({
-  env: {
-    BIBLE_API_PROVIDER: 'api.bible',
-    BIBLE_API_TRANSLATION: 'RVR1960'
-  }
-}));
 
 const app = (await import('../../src/app.js')).default;
 
@@ -78,10 +72,20 @@ describe('meme-service (contenido bíblico)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ status: 'ok', data: verse });
-      expect(getVerseForEmotion).toHaveBeenCalledWith('HAPPY');
+      expect(getVerseForEmotion).toHaveBeenCalledWith('HAPPY', {
+        requestedTranslation: undefined
+      });
     });
 
-    it('rechaza una traducción distinta a la configurada', async () => {
+    it('rechaza una traducción distinta a la configurada (decidido por el servicio)', async () => {
+      getVerseForEmotion.mockRejectedValue(
+        new AppError({
+          statusCode: 400,
+          code: 'VALIDATION_ERROR',
+          message: 'La traducción "NVI" no está disponible; este servicio solo tiene configurada "RVR09"'
+        })
+      );
+
       const response = await request(app)
         .get('/')
         .query({ emotion: 'HAPPY', translation: 'NVI' })
@@ -89,7 +93,9 @@ describe('meme-service (contenido bíblico)', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.code).toBe('VALIDATION_ERROR');
-      expect(getVerseForEmotion).not.toHaveBeenCalled();
+      expect(getVerseForEmotion).toHaveBeenCalledWith('HAPPY', {
+        requestedTranslation: 'NVI'
+      });
     });
 
     it('acepta la traducción cuando coincide con la configurada', async () => {
@@ -97,10 +103,13 @@ describe('meme-service (contenido bíblico)', () => {
 
       const response = await request(app)
         .get('/')
-        .query({ emotion: 'HAPPY', translation: 'rvr1960' })
+        .query({ emotion: 'HAPPY', translation: 'RVR09' })
         .set('Authorization', AUTHORIZATION);
 
       expect(response.status).toBe(200);
+      expect(getVerseForEmotion).toHaveBeenCalledWith('HAPPY', {
+        requestedTranslation: 'RVR09'
+      });
     });
 
     it('propaga un error controlado si falta la API Key', async () => {

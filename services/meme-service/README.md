@@ -40,9 +40,26 @@ confirma consultando `GET /v1/bibles` ya autenticado desde el panel o la API.
 Hasta que eso se confirme, el servicio no debe mostrar ningún contenido de
 esa traducción como si viniera realmente de ella.
 
-Para agregar NVI (o cualquier otra traducción) más adelante: solo se necesita
-el `bibleId` real que te entregue el proveedor para esa traducción. La
-arquitectura (cliente, catálogo, rutas) no cambia.
+### Estado real confirmado (verificado contra la cuenta de api.bible en uso)
+
+Se consultó `GET /v1/bibles` con la clave real configurada: de 249 Biblias
+visibles para esta cuenta, **ninguna es RVR1960 ni NVI**. Lo más cercano es
+`RVR09` (Reina Valera 1909, dominio público), que sí está disponible.
+Conseguir RVR1960 o NVI requiere pedir la licencia "Standard License" a
+api.bible/Biblica por separado — no es automático con solo tener una cuenta.
+
+Mientras se gestiona esa licencia, el servicio usa **RVR09** como traducción
+temporal (`bibleId` `592420522e16049f-01`), con su atribución real de
+dominio público. No es RVR1960: es una traducción distinta y más antigua,
+usada aquí solo para que el resto del sistema sea probable de extremo a
+extremo con texto bíblico real, no inventado.
+
+Para agregar NVI o RVR1960 más adelante, una vez obtenida la licencia: solo
+se necesita el `bibleId` real que te entregue el proveedor para esa
+traducción. La arquitectura (cliente, catálogo, rutas) no cambia — el
+`abbreviation`/`name` que se muestra al usuario se obtiene siempre en vivo
+de `GET /bibles/{bibleId}` (con caché en memoria del proceso), nunca
+hardcodeado.
 
 ### ¿Por qué no se implementó YouVersion Platform Services?
 
@@ -62,7 +79,7 @@ su documentación.
 | `BIBLE_API_PROVIDER` | No (default `api.bible`) | Si se pone un proveedor no implementado, `GET /` responde `503 SERVICE_NOT_CONFIGURED`. |
 | `BIBLE_API_BASE_URL` | No (default `https://rest.api.bible/v1`) | — |
 | `BIBLE_API_KEY` | **Sí, para `GET /`** | Si falta, `GET /` responde `503 SERVICE_NOT_CONFIGURED` con un mensaje claro. El servicio arranca y `/health` funciona igual sin ella. |
-| `BIBLE_API_TRANSLATION` | No (default `RVR1960`, ver nota abajo) | — |
+| `BIBLE_API_TRANSLATION` | **Sí, para `GET /`** (default `592420522e16049f-01` = RVR09, ver nota arriba) | Si el `bibleId` no es válido para tu clave, `GET /` responde `404 NOT_FOUND`. |
 | `BIBLE_API_TIMEOUT_MS` | No (default `5000`) | — |
 | `SUPABASE_URL` / `SUPABASE_JWT_ISSUER` / `SUPABASE_JWT_AUDIENCE` / `SUPABASE_JWT_SECRET` / `SUPABASE_JWKS_URL` | Sí, para cualquier ruta autenticada | Sin esto, `@butaca/auth` responde `500 AUTH_CONFIGURATION_ERROR` en vez de validar el token. |
 | `DATABASE_URL` | Sí, para arrancar | Sin esto, `@butaca/database` lanza un error al importarse y el proceso no inicia. |

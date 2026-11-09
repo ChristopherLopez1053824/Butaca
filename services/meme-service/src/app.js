@@ -4,7 +4,6 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { requireAuth } from '@butaca/auth';
 import { withUserContext } from '@butaca/database';
-import { env } from './config/env.js';
 import { AppError, errorBody } from './errors.js';
 import { getVerseForEmotion } from './services/verse.service.js';
 
@@ -91,15 +90,8 @@ app.get('/', async (req, res, next) => {
 
   const { emotion, translation } = parsed.data;
 
-  if (translation && translation.toUpperCase() !== env.BIBLE_API_TRANSLATION.toUpperCase()) {
-    return res.status(400).json(errorBody(
-      'VALIDATION_ERROR',
-      `La traducción "${translation}" no está disponible; este servicio solo tiene configurada "${env.BIBLE_API_TRANSLATION}"`
-    ));
-  }
-
   try {
-    const verse = await getVerseForEmotion(emotion);
+    const verse = await getVerseForEmotion(emotion, { requestedTranslation: translation });
     return res.status(200).json({ status: 'ok', data: verse });
   } catch (error) {
     return next(error);

@@ -8,11 +8,11 @@ Este contrato define cómo se comunican el frontend, el API Gateway y los micros
 |---|---|
 | API Gateway | Implementado en la rama `ApiGateway` |
 | User Service | Implementado en la rama `User-and-Favorite-service` |
-| Favorites Service | **Revertido a placeholder** por un merge en `Desarrollo` (`136433c`); el contrato describe el diseño previsto, pero el código actual solo responde `/health`. Ver sección 8. |
+| Favorites Service | Implementado en la rama `User-and-Favorite-service`; recuperado el 2026-11-09 tras un merge en `Desarrollo` que lo había revertido a placeholder (restaurado desde el commit `948c303`, anterior a su propio revert `136433c`) |
 | Movie Service | Implementado en la rama `MovieService` |
 | Emotion Service | Implementado en la rama `feature/emotion-service` |
 | Dashboard Service | Implementado en la rama `Desarrollo` |
-| Meme Service | Implementado en la rama `Desarrollo` (contenido bíblico; requiere `BIBLE_API_KEY` propia del proveedor) |
+| Meme Service | Implementado en la rama `Desarrollo` (contenido bíblico vía api.bible, probado con clave real; usa RVR09 temporalmente porque RVR1960/NVI no están licenciadas para esa cuenta) |
 
 ## 1. Reglas generales
 
@@ -296,7 +296,15 @@ con la emoción del usuario. El texto siempre se obtiene en vivo de un
 proveedor externo con licencia (hoy: api.bible); nunca se genera ni se
 inventa.
 
-### `GET /api/memes?emotion=HAPPY&translation=RVR1960`
+**Traducción real en uso:** se verificó contra la cuenta real de api.bible
+que RVR1960 y NVI no están habilitadas para esta clave (de 249 Biblias
+visibles, ninguna coincide). Mientras se gestiona esa licencia con
+api.bible/Biblica, el servicio usa **RVR09** (Reina Valera 1909, dominio
+público) como traducción temporal. `translation`/`translationName` en la
+respuesta reflejan siempre la traducción real configurada, obtenida en vivo
+del proveedor (`GET /bibles/{bibleId}`), nunca un valor fijo en código.
+
+### `GET /api/memes?emotion=HAPPY&translation=RVR09`
 
 `emotion` es obligatoria. `translation` es opcional; si se envía y no
 coincide con la traducción configurada en el servicio, responde
@@ -308,12 +316,13 @@ está confirmada.
   "status": "ok",
   "data": {
     "provider": "api.bible",
-    "translation": "RVR1960",
-    "externalId": "JHN.3.16",
-    "reference": "Juan 3:16",
-    "theme": "esperanza",
-    "text": "Porque de tal manera amó Dios al mundo...",
-    "copyright": "© Sociedades Bíblicas Unidas. Usado con permiso."
+    "translation": "RVR09",
+    "translationName": "Reina Valera 1909",
+    "externalId": "PHP.4.4",
+    "reference": "Filipenses 4:4",
+    "theme": "alegría",
+    "text": "Gozaos en el Señor siempre: otra vez digo: Que os gocéis.",
+    "copyright": "Reina-Valera 1909 - Dominio público. Fue realizada por Sociedades Bíblicas Unidas y publicada por primera vez en 1909."
   }
 }
 ```
@@ -327,7 +336,7 @@ comprensible, sin afectar a los demás microservicios.
 Registra qué contenido se le mostró al usuario autenticado.
 
 ```json
-{ "provider": "RVR1960", "externalId": "JHN.3.16", "title": "Juan 3:16 (RVR1960)", "emotionRecordId": "uuid-opcional" }
+{ "provider": "RVR09", "externalId": "PHP.4.4", "title": "Filipenses 4:4 (RVR09)", "emotionRecordId": "uuid-opcional" }
 ```
 
 ### `GET /api/memes/history`
