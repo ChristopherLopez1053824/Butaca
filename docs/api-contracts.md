@@ -11,7 +11,8 @@ Este contrato define cómo se comunican el frontend, el API Gateway y los micros
 | Favorites Service | Implementado en la rama `User-and-Favorite-service` |
 | Movie Service | Implementado en la rama `MovieService` |
 | Emotion Service | Implementado en la rama `feature/emotion-service` |
-| Dashboard Service | Propuesto |
+| Dashboard Service | Implementado en la rama `feature/integrante-6-memes-dashboard` |
+| Meme Service | Implementado en la rama `feature/integrante-6-memes-dashboard` |
 
 ## 1. Reglas generales
 
@@ -40,6 +41,7 @@ El Gateway quita el prefijo `/api/<servicio>` antes de reenviar la petición, y 
 | `POST /api/movies/recommendations` | `POST /recommendations` |
 | `GET /api/favorites?limit=5` | `GET /?limit=5` |
 | `GET /api/dashboard/summary` | `GET /summary` |
+| `GET /api/memes/history` | `GET /history` |
 
 ## 3. Formato de respuestas
 
@@ -263,27 +265,75 @@ Elimina un favorito propio y responde `204` sin cuerpo. Responde `404 NOT_FOUND`
 
 ### `GET /api/dashboard/summary`
 
-Admite `from` y `to`. Reúne los datos de Emotion, Movie y Favorites sin leer sus tablas.
+Admite `from` y `to` en ISO 8601. Reúne los datos de los demás servicios sin leer sus tablas. Si un servicio falla o tarda más de 5 segundos, el resumen conserva los datos disponibles y lo indica en `advertencias`.
 
 ```json
 {
   "status": "ok",
   "data": {
-    "emotionTimeline": [
-      { "date": "2026-11-01", "emotion": "HAPPY", "count": 2 }
+    "resumen": {
+      "totalEmociones": 12,
+      "totalRecomendaciones": 40,
+      "totalFavoritos": 4,
+      "totalMemes": 3
+    },
+    "frecuenciaEmociones": { "SAD": 7, "FRUSTRATION": 5 },
+    "evolucionAnimo": [
+      {
+        "id": "uuid",
+        "emotion": "SAD",
+        "source": "CAMERA",
+        "confidence": 0.92,
+        "createdAt": "2026-11-01T20:00:00.000Z"
+      }
     ],
-    "recommendationsByEmotion": [
-      { "emotion": "HAPPY", "mediaType": "MOVIE", "count": 10 }
-    ],
-    "favoritesCount": 4,
-    "unavailable": []
+    "ultimasRecomendaciones": [],
+    "ultimosMemes": [],
+    "advertencias": null
   }
 }
 ```
 
-Si un servicio falla, el resumen conserva los datos disponibles y agrega ese servicio a `unavailable`, por ejemplo `["favorites"]`.
+- Los totales salen de `pagination.total` de cada servicio.
+- `frecuenciaEmociones` y `evolucionAnimo` usan las 100 emociones más recientes del periodo.
+- Si un servicio no responde, `advertencias` es `{ "serviciosNoDisponibles": ["movie-service"] }`; si todos responden, es `null`.
 
-## 10. Comunicación entre servicios
+## 10. Meme Service
+
+Muestra imágenes según la emoción y guarda cuáles vio el usuario.
+
+### `GET /api/memes?emotion=SAD`
+
+Devuelve el catálogo de imágenes para una emoción. `emotion` es obligatoria y debe ser uno de los 10 valores de la sección 1; cualquier otro valor responde `400 VALIDATION_ERROR`.
+
+```json
+{
+  "status": "ok",
+  "data": [
+    { "provider": "internal", "imageUrl": "https://images.unsplash.com/photo-1534361960057-19889db9621e" }
+  ]
+}
+```
+
+### `POST /api/memes/history`
+
+Registra una imagen mostrada y responde `201`.
+
+```json
+{
+  "provider": "internal",
+  "imageUrl": "https://images.unsplash.com/photo-1534361960057-19889db9621e",
+  "emotionRecordId": "uuid-opcional"
+}
+```
+
+`provider` e `imageUrl` son obligatorios. Si `emotionRecordId` no existe o pertenece a otro usuario, RLS rechaza el registro y el servicio responde `404 NOT_FOUND`.
+
+### `GET /api/memes/history`
+
+Devuelve el historial propio, del más reciente al más antiguo. Admite `from`, `to`, `page` y `limit`; el valor predeterminado de `limit` es 20.
+
+## 11. Comunicación entre servicios
 
 Cada llamada usa la URL del servicio por variable de entorno, reenvía `Authorization` y tiene timeout. Estas llamadas no pasan por el Gateway.
 
@@ -295,11 +345,11 @@ El Gateway envía a cada servicio la IP del usuario en `X-Forwarded-For` y el id
 | Dashboard | Emotion | `GET {EMOTION_SERVICE_URL}/api/emotions` |
 | Dashboard | Movie | `GET {MOVIE_SERVICE_URL}/recommendations` |
 | Dashboard | Favorites | `GET {FAVORITES_SERVICE_URL}/` |
+| Dashboard | Meme | `GET {MEME_SERVICE_URL}/history` |
 
 Las respuestas entre servicios usan el formato de este contrato, excepto Emotion, que usa su formato interno. Ningún servicio lee ni escribe tablas de otro.
 
-## 11. Temas por aprobar
+## 12. Temas por aprobar
 
 - Confirmar qué hace el frontend cuando la cámara detecta `happy` o `neutral`.
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
-- Confirmar el formato de `GET /api/dashboard/summary`.

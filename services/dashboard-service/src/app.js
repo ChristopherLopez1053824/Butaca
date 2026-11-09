@@ -27,8 +27,9 @@ const schemaFiltrosDashboard = z.object({
   to: z.string().datetime().optional()
 });
 
-// Funcion auxiliar de consulta HTTP con limite de tiempo estricto
-async function consultarServicio(url, tokenAutorizacion, tiempoLimiteMs = 3000) {
+// Funcion auxiliar de consulta HTTP con limite de tiempo estricto.
+// Devuelve los registros de la pagina y el total real que informa el servicio.
+async function consultarServicio(url, tokenAutorizacion, tiempoLimiteMs = 5000) {
   const controlador = new AbortController();
   const temporizador = setTimeout(() => controlador.abort(), tiempoLimiteMs);
 
@@ -46,7 +47,8 @@ async function consultarServicio(url, tokenAutorizacion, tiempoLimiteMs = 3000) 
     }
 
     const cuerpoJson = await respuesta.json();
-    return cuerpoJson.data || [];
+    const data = Array.isArray(cuerpoJson.data) ? cuerpoJson.data : [];
+    return { data, total: cuerpoJson.pagination?.total ?? data.length };
   } finally {
     clearTimeout(temporizador);
   }
@@ -74,7 +76,7 @@ routerDashboard.get('/summary', async (req, res, next) => {
         status: 'error',
         code: 'VALIDATION_ERROR',
         message: 'Parametros de fecha invalidos (deben ser formato ISO 8601)',
-        details: validacion.error.errors
+        details: validacion.error.issues
       });
     }
 
@@ -82,44 +84,47 @@ routerDashboard.get('/summary', async (req, res, next) => {
     const params = new URLSearchParams();
     if (from) params.append('from', from);
     if (to) params.append('to', to);
-    const queryString = params.toString() ? `?${params.toString()}` : '';
+    // Cada listado trae hasta 100 registros; los totales salen de pagination.total.
+    params.append('limit', '100');
+    const queryString = `?${params.toString()}`;
 
     const tokenAutorizacion = req.headers.authorization;
 
-    // Consultas en paralelo con tolerancia a fallos
+    // Consultas en paralelo con tolerancia a fallos. Las rutas siguen el contrato:
+    // Emotion conserva /api/emotions; Movie, Favorites y Meme declaran sus rutas sin prefijo.
     const [resEmociones, resPeliculas, resFavoritos, resMemes] = await Promise.allSettled([
       consultarServicio(`${EMOTION_SERVICE_URL}/api/emotions${queryString}`, tokenAutorizacion),
-      consultarServicio(`${MOVIE_SERVICE_URL}/api/movies/recommendations${queryString}`, tokenAutorizacion),
-      consultarServicio(`${FAVORITES_SERVICE_URL}/api/favorites`, tokenAutorizacion),
-      consultarServicio(`${MEME_SERVICE_URL}/api/memes/history${queryString}`, tokenAutorizacion)
+      consultarServicio(`${MOVIE_SERVICE_URL}/recommendations${queryString}`, tokenAutorizacion),
+      consultarServicio(`${FAVORITES_SERVICE_URL}/?limit=100`, tokenAutorizacion),
+      consultarServicio(`${MEME_SERVICE_URL}/history${queryString}`, tokenAutorizacion)
     ]);
 
     const serviciosNoDisponibles = [];
 
     const emociones = resEmociones.status === 'fulfilled'
       ? resEmociones.value
-      : (serviciosNoDisponibles.push('emotion-service'), []);
+      : (serviciosNoDisponibles.push('emotion-service'), { data: [], total: 0 });
 
     const recomendaciones = resPeliculas.status === 'fulfilled'
       ? resPeliculas.value
-      : (serviciosNoDisponibles.push('movie-service'), []);
+      : (serviciosNoDisponibles.push('movie-service'), { data: [], total: 0 });
 
     const favoritos = resFavoritos.status === 'fulfilled'
       ? resFavoritos.value
-      : (serviciosNoDisponibles.push('favorites-service'), []);
+      : (serviciosNoDisponibles.push('favorites-service'), { data: [], total: 0 });
 
     const historialMemes = resMemes.status === 'fulfilled'
       ? resMemes.value
-      : (serviciosNoDisponibles.push('meme-service'), []);
+      : (serviciosNoDisponibles.push('meme-service'), { data: [], total: 0 });
 
     // Conteo y agregacion de datos
     const frecuenciaEmociones = {};
-    for (const item of emociones) {
+    for (const item of emociones.data) {
       const emocion = item.emotion || 'NEUTRAL';
       frecuenciaEmociones[emocion] = (frecuenciaEmociones[emocion] || 0) + 1;
     }
 
-    const evolucionAnimo = emociones.map((item) => ({
+    const evolucionAnimo = emociones.data.map((item) => ({
       id: item.id,
       emotion: item.emotion,
       source: item.source,
@@ -131,15 +136,15 @@ routerDashboard.get('/summary', async (req, res, next) => {
       status: 'ok',
       data: {
         resumen: {
-          totalEmociones: emociones.length,
-          totalRecomendaciones: recomendaciones.length,
-          totalFavoritos: favoritos.length,
-          totalMemes: historialMemes.length
+          totalEmociones: emociones.total,
+          totalRecomendaciones: recomendaciones.total,
+          totalFavoritos: favoritos.total,
+          totalMemes: historialMemes.total
         },
         frecuenciaEmociones,
         evolucionAnimo,
-        ultimasRecomendaciones: recomendaciones.slice(0, 5),
-        ultimosMemes: historialMemes.slice(0, 5),
+        ultimasRecomendaciones: recomendaciones.data.slice(0, 5),
+        ultimosMemes: historialMemes.data.slice(0, 5),
         advertencias: serviciosNoDisponibles.length > 0
           ? { serviciosNoDisponibles }
           : null

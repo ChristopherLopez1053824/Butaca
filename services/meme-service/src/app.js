@@ -16,7 +16,13 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const MEMES_POR_EMOCION = {
+// Emociones que acepta la API (sección 1 del contrato).
+const EMOCIONES = [
+  'SAD', 'ANGRY', 'FEARFUL', 'DISGUSTED', 'NEGATIVE_SURPRISE',
+  'CONTEMPT', 'FRUSTRATION', 'CONFUSION', 'SHAME', 'BOREDOM'
+];
+
+const IMAGENES = {
   HAPPY: [
     { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba' },
     { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1' }
@@ -32,6 +38,22 @@ const MEMES_POR_EMOCION = {
     { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5' }
   ]
 };
+
+// Cada emoción del contrato tiene su lista. SAD conserva sus imágenes; las demás
+// reciben las imágenes alegres para levantar el ánimo, hasta que se asignen propias.
+const IMAGENES_ALEGRES = [...IMAGENES.HAPPY, ...IMAGENES.SURPRISED, ...IMAGENES.NEUTRAL];
+const MEMES_POR_EMOCION = Object.fromEntries(
+  EMOCIONES.map((emocion) => [emocion, IMAGENES[emocion] ?? IMAGENES_ALEGRES])
+);
+
+const schemaCatalogo = z.object({
+  emotion: z.enum(EMOCIONES, { message: 'emotion debe ser una de las emociones del contrato' })
+});
+
+// RLS rechaza la fila (42501) si emotionRecordId no existe o es de otro usuario.
+function esEmocionAjena(error) {
+  return error?.code === 'P2003' || String(error?.message).includes('42501');
+}
 
 const schemaNuevoMeme = z.object({
   provider: z.string().min(1, 'El proveedor es obligatorio'),
@@ -58,12 +80,19 @@ const routerMemes = express.Router();
 routerMemes.use(requireAuth);
 
 routerMemes.get('/', (req, res) => {
-  const emocion = (req.query.emotion || 'NEUTRAL').toString().toUpperCase();
-  const lista = MEMES_POR_EMOCION[emocion] || MEMES_POR_EMOCION.NEUTRAL;
+  const validacion = schemaCatalogo.safeParse(req.query);
+  if (!validacion.success) {
+    return res.status(400).json({
+      status: 'error',
+      code: 'VALIDATION_ERROR',
+      message: 'Emoción inválida',
+      details: validacion.error.issues
+    });
+  }
 
   return res.status(200).json({
     status: 'ok',
-    data: lista
+    data: MEMES_POR_EMOCION[validacion.data.emotion]
   });
 });
 
@@ -75,7 +104,7 @@ routerMemes.post('/history', async (req, res, next) => {
         status: 'error',
         code: 'VALIDATION_ERROR',
         message: 'Datos de meme invalidos',
-        details: validacion.error.errors
+        details: validacion.error.issues
       });
     }
 
@@ -104,6 +133,14 @@ routerMemes.post('/history', async (req, res, next) => {
       }
     });
   } catch (error) {
+    if (esEmocionAjena(error)) {
+      return res.status(404).json({
+        status: 'error',
+        code: 'NOT_FOUND',
+        message: 'La emoción indicada no existe'
+      });
+    }
+
     next(error);
   }
 });
@@ -116,7 +153,7 @@ routerMemes.get('/history', async (req, res, next) => {
         status: 'error',
         code: 'VALIDATION_ERROR',
         message: 'Filtros de consulta invalidos',
-        details: validacion.error.errors
+        details: validacion.error.issues
       });
     }
 
@@ -179,12 +216,20 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  const statusCode = err.status || 500;
-  const errorCode = err.code || 'INTERNAL_ERROR';
-  res.status(statusCode).json({
+  // Los errores inesperados se registran, pero el cliente no recibe detalles internos.
+  if (!err.status || err.status >= 500) {
+    console.error(err);
+    return res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Error interno del servidor'
+    });
+  }
+
+  return res.status(err.status).json({
     status: 'error',
-    code: errorCode,
-    message: err.message || 'Error interno del servidor'
+    code: err.code || 'ERROR',
+    message: err.message
   });
 });
 

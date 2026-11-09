@@ -1,6 +1,6 @@
 $kind: collection
 description: |-
-  Recorre el flujo completo a través del API Gateway: login, emoción, recomendaciones y favoritos.
+  Recorre el flujo completo a través del API Gateway: login, emoción, recomendaciones, favoritos, memes y tablero.
 
   Antes de empezar, llena anonKey, email y password en las variables de la colección. Luego ejecuta las carpetas en orden, o la colección completa con Run.
 variables:
@@ -16,8 +16,9 @@ variables:
   mediaType: ""
   favoriteBody: ""
   favoriteId: ""
+  memeImage: ""
 auth:
-  - id: 759c3be0-7208-4e8a-87bc-9cff92e260c8
+  - id: 3028235f-3918-471e-ae00-375fad069052
     type: bearer
     name: bearer auth
     credentials:

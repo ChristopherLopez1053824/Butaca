@@ -25,4 +25,4 @@ scripts:
       pm.collectionVariables.set('token', sesion.access_token);
       pm.collectionVariables.set('userId', sesion.user && sesion.user.id);
     language: text/javascript
-order: 7000
+order: 8000

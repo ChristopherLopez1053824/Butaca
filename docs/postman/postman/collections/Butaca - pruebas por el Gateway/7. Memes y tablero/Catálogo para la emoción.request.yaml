@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/memes?emotion=SAD"
+method: GET
+queryParams:
+  emotion: SAD
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      const imagenes = pm.response.json().data;
+      pm.test('Trae imágenes', () => pm.expect(imagenes.length).to.be.above(0));
+      pm.collectionVariables.set('memeImage', imagenes[0].imageUrl);
+    language: text/javascript
+order: 1000

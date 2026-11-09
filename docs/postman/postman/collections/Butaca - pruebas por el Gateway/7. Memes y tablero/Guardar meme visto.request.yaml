@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/memes/history"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "provider": "internal",
+      "imageUrl": "{{memeImage}}",
+      "emotionRecordId": "{{emotionRecordId}}"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Responde 201', () => pm.response.to.have.status(201));
+    language: text/javascript
+order: 3000

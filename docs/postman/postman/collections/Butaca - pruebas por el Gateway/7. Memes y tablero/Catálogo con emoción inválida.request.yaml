@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/memes?emotion=HAPPY"
+method: GET
+queryParams:
+  emotion: HAPPY
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 400', () => pm.response.to.have.status(400));
+      pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));
+    language: text/javascript
+order: 2000

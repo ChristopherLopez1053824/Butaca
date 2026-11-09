@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/api/memes/history"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      pm.test('Hay al menos un meme', () => pm.expect(pm.response.json().pagination.total).to.be.above(0));
+    language: text/javascript
+order: 4000

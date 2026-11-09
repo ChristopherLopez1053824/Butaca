@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "80f661a4-ed2a-4a22-8fe2-12feeba4ba15",
+    "_postman_id": "abd2fe4f-7be4-47dc-883e-cfcee370e57c",
     "name": "Butaca - pruebas por el Gateway",
-    "description": "Recorre el flujo completo a través del API Gateway: login, emoción, recomendaciones y favoritos.\n\nAntes de empezar, llena anonKey, email y password en las variables de la colección. Luego ejecuta las carpetas en orden, o la colección completa con Run.",
+    "description": "Recorre el flujo completo a través del API Gateway: login, emoción, recomendaciones, favoritos, memes y tablero.\n\nAntes de empezar, llena anonKey, email y password en las variables de la colección. Luego ejecuta las carpetas en orden, o la colección completa con Run.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -527,7 +527,129 @@
       ]
     },
     {
-      "name": "7. Seguridad",
+      "name": "7. Memes y tablero",
+      "item": [
+        {
+          "name": "Catálogo para la emoción",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/memes?emotion=SAD",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const imagenes = pm.response.json().data;",
+                  "pm.test('Trae imágenes', () => pm.expect(imagenes.length).to.be.above(0));",
+                  "pm.collectionVariables.set('memeImage', imagenes[0].imageUrl);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catálogo con emoción inválida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/memes?emotion=HAPPY",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guardar meme visto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/memes/history",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"internal\",\n  \"imageUrl\": \"{{memeImage}}\",\n  \"emotionRecordId\": \"{{emotionRecordId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver historial de memes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/memes/history",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hay al menos un meme', () => pm.expect(pm.response.json().pagination.total).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen del tablero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/summary",
+            "description": "Dashboard consulta Emotion, Movie, Favorites y Meme. advertencias es null si todos respondieron."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const resumen = pm.response.json().data;",
+                  "pm.test('Todos los servicios respondieron', () => pm.expect(resumen.advertencias).to.eql(null));",
+                  "pm.test('Cuenta emociones y memes', () => { pm.expect(resumen.resumen.totalEmociones).to.be.above(0); pm.expect(resumen.resumen.totalMemes).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Seguridad",
       "item": [
         {
           "name": "Sin token",
@@ -713,6 +835,10 @@
     },
     {
       "key": "favoriteId",
+      "value": ""
+    },
+    {
+      "key": "memeImage",
       "value": ""
     }
   ]
