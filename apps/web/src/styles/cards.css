@@ -514,3 +514,36 @@
     font-size: 0.56rem;
   }
 }
+
+.bible-verse-card {
+  margin: 0;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.bible-verse-text {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 1rem;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.bible-verse-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bible-verse-reference {
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.bible-verse-copyright {
+  color: var(--muted);
+  font-size: 0.68rem;
+}

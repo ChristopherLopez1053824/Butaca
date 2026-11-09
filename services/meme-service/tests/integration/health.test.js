@@ -16,19 +16,25 @@ describe('Meme Service - Tests de Integracion', () => {
     expect(res.body.service).toBe('meme-service');
   });
 
-  it('GET /api/memes debe rechazar con 401 si no hay token', async () => {
-    const res = await request(app).get('/api/memes');
+  it('GET / debe rechazar con 401 si no hay token', async () => {
+    const res = await request(app).get('/').query({ emotion: 'HAPPY' });
     expect(res.status).toBe(401);
     expect(res.body.code).toBe('UNAUTHORIZED');
   });
 
-  it('POST /api/memes/history debe rechazar con 401 si no hay token', async () => {
+  it('POST /history debe rechazar con 401 si no hay token', async () => {
     const res = await request(app)
-      .post('/api/memes/history')
+      .post('/history')
       .send({
-        provider: 'internal',
-        imageUrl: 'https://example.com/test.jpg'
+        provider: 'RVR1960',
+        externalId: 'JHN.3.16'
       });
+    expect(res.status).toBe(401);
+    expect(res.body.code).toBe('UNAUTHORIZED');
+  });
+
+  it('GET /history debe rechazar con 401 si no hay token', async () => {
+    const res = await request(app).get('/history');
     expect(res.status).toBe(401);
     expect(res.body.code).toBe('UNAUTHORIZED');
   });

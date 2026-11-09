@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/AuthContext'
+import { BibleVerseSection } from '../components/BibleVerseSection'
 import { CameraSection } from '../components/CameraSection'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { EmotionDashboard } from '../components/EmotionDashboard'
@@ -8,6 +9,7 @@ import type { RecommendationsStatus } from '../components/RecommendationsSection
 import { ServiceStatusPanel } from '../components/ServiceStatusPanel'
 import { useEmotionFlow } from '../hooks/useEmotionFlow'
 import type { EmotionFlowStatus } from '../hooks/useEmotionFlow'
+import { useEmotionVerse } from '../hooks/useEmotionVerse'
 import { useFavorites } from '../hooks/useFavorites'
 import { getApiEmotionLabel } from '../lib/emotionContract'
 import type { EmotionSaveStatus } from '../lib/emotions'
@@ -55,6 +57,10 @@ export function DashboardPage() {
   } = useAuth()
   const emotionFlow = useEmotionFlow()
   const favorites = useFavorites()
+  const emotionVerse = useEmotionVerse(
+    emotionFlow.emotionRecord?.emotion ?? null,
+    emotionFlow.emotionRecord?.id ?? null,
+  )
   const saveStatus = getSaveStatus(
     emotionFlow.status,
     emotionFlow.emotionRecord !== null,
@@ -139,6 +145,12 @@ export function DashboardPage() {
           isFavorite={favorites.isFavorite}
           isFavoritePending={favorites.isPending}
           onToggleFavorite={handleToggleFavorite}
+        />
+        <BibleVerseSection
+          status={emotionVerse.status}
+          verse={emotionVerse.verse}
+          error={emotionVerse.error}
+          onRetry={emotionVerse.reload}
         />
 
         <div className="dashboard-lower">

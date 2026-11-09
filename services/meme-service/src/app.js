@@ -1,53 +1,64 @@
 import express from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { requireAuth } from '@butaca/auth';
 import { withUserContext } from '@butaca/database';
+import { env } from './config/env.js';
+import { AppError, errorBody } from './errors.js';
+import { getVerseForEmotion } from './services/verse.service.js';
 
 const app = express();
 
-<<<<<<< HEAD
 app.disable('x-powered-by');
 
 // Las peticiones llegan por el API Gateway, que envía la IP real del usuario
 // en X-Forwarded-For. Confiar en un salto permite aplicar el rate limit por usuario.
 app.set('trust proxy', 1);
-=======
->>>>>>> 599955b (feat(meme-service): implementar catalogo, historial con RLS y tests de integracion)
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
-const MEMES_POR_EMOCION = {
-  HAPPY: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba' },
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1' }
-  ],
-  SAD: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1534361960057-19889db9621e' },
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131' }
-  ],
-  SURPRISED: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1561948955-570b270e7c36' }
-  ],
-  NEUTRAL: [
-    { provider: 'internal', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5' }
-  ]
-};
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json(
+    errorBody('RATE_LIMIT_EXCEEDED', 'Se excedió el límite de solicitudes')
+  )
+}));
 
-const schemaNuevoMeme = z.object({
-  provider: z.string().min(1, 'El proveedor es obligatorio'),
-  imageUrl: z.string().url('La URL de la imagen debe ser valida'),
-  emotionRecordId: z.string().uuid('El ID de emocion debe ser UUID valido').optional()
-});
+const emotionQuerySchema = z.object({
+  emotion: z.string().min(1, 'emotion es obligatoria'),
+  // Si el cliente pide una traducción explícita, debe coincidir con la que
+  // el servicio tiene configurada: no fingimos tener otra disponible.
+  translation: z.string().min(1).optional()
+}).strict();
 
-const schemaFiltrosHistorial = z.object({
+const historyBodySchema = z.object({
+  provider: z.string().min(1, 'El proveedor es obligatorio').max(100),
+  externalId: z.string().min(1, 'La referencia es obligatoria').max(255),
+  title: z.string().max(300).nullable().optional(),
+  emotionRecordId: z.string().uuid('El ID de emoción debe ser un UUID válido').optional()
+}).strict();
+
+const historyQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional()
-});
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional()
+}).strict();
+
+function serializeHistoryEntry(entry) {
+  return {
+    id: entry.id,
+    emotionRecordId: entry.emotionRecordId,
+    provider: entry.provider,
+    externalId: entry.externalId,
+    title: entry.title,
+    createdAt: entry.createdAt.toISOString()
+  };
+}
 
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -57,138 +68,155 @@ app.get('/health', (req, res) => {
   });
 });
 
-const routerMemes = express.Router();
-routerMemes.use(requireAuth);
+app.use(requireAuth);
 
-routerMemes.get('/', (req, res) => {
-  const emocion = (req.query.emotion || 'NEUTRAL').toString().toUpperCase();
-  const lista = MEMES_POR_EMOCION[emocion] || MEMES_POR_EMOCION.NEUTRAL;
+// GET /api/memes?emotion=HAPPY&translation=RVR1960
+// Devuelve un versículo relacionado con la emoción, obtenido en vivo del
+// proveedor configurado. No guarda nada: eso lo hace POST /history aparte,
+// a propósito de decisión del cliente, para no duplicar registros por cada
+// consulta.
+app.get('/', async (req, res, next) => {
+  const parsed = emotionQuerySchema.safeParse(req.query);
 
-  return res.status(200).json({
-    status: 'ok',
-    data: lista
-  });
-});
+  if (!parsed.success) {
+    return res.status(400).json(errorBody(
+      'VALIDATION_ERROR',
+      'Los parámetros de la consulta no son válidos',
+      parsed.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message
+      }))
+    ));
+  }
 
-routerMemes.post('/history', async (req, res, next) => {
+  const { emotion, translation } = parsed.data;
+
+  if (translation && translation.toUpperCase() !== env.BIBLE_API_TRANSLATION.toUpperCase()) {
+    return res.status(400).json(errorBody(
+      'VALIDATION_ERROR',
+      `La traducción "${translation}" no está disponible; este servicio solo tiene configurada "${env.BIBLE_API_TRANSLATION}"`
+    ));
+  }
+
   try {
-    const validacion = schemaNuevoMeme.safeParse(req.body);
-    if (!validacion.success) {
-      return res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Datos de meme invalidos',
-        details: validacion.error.errors
-      });
-    }
-
-    const { provider, imageUrl, emotionRecordId } = validacion.data;
-
-    const nuevoRegistro = await withUserContext(req.auth.userId, async (tx) => {
-      return await tx.memeHistory.create({
-        data: {
-          userId: req.auth.userId,
-          emotionRecordId: emotionRecordId || null,
-          provider,
-          imageUrl
-        }
-      });
-    });
-
-    return res.status(201).json({
-      status: 'ok',
-      data: {
-        id: nuevoRegistro.id,
-        userId: nuevoRegistro.userId,
-        emotionRecordId: nuevoRegistro.emotionRecordId,
-        provider: nuevoRegistro.provider,
-        imageUrl: nuevoRegistro.imageUrl,
-        createdAt: nuevoRegistro.createdAt.toISOString()
-      }
-    });
+    const verse = await getVerseForEmotion(emotion);
+    return res.status(200).json({ status: 'ok', data: verse });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
-routerMemes.get('/history', async (req, res, next) => {
+app.post('/history', async (req, res, next) => {
   try {
-    const validacion = schemaFiltrosHistorial.safeParse(req.query);
-    if (!validacion.success) {
-      return res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Filtros de consulta invalidos',
-        details: validacion.error.errors
-      });
+    const parsed = historyBodySchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json(errorBody(
+        'VALIDATION_ERROR',
+        'Los datos del historial no son válidos',
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message
+        }))
+      ));
     }
 
-    const { page, limit, from, to } = validacion.data;
+    const { provider, externalId, title, emotionRecordId } = parsed.data;
+
+    const entry = await withUserContext(req.auth.userId, (tx) =>
+      tx.memeHistory.create({
+        data: {
+          userId: req.auth.userId,
+          emotionRecordId: emotionRecordId ?? null,
+          provider,
+          externalId,
+          title: title ?? null
+        }
+      })
+    );
+
+    return res.status(201).json({ status: 'ok', data: serializeHistoryEntry(entry) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/history', async (req, res, next) => {
+  try {
+    const parsed = historyQuerySchema.safeParse(req.query);
+
+    if (!parsed.success) {
+      return res.status(400).json(errorBody(
+        'VALIDATION_ERROR',
+        'Los parámetros de paginación no son válidos',
+        parsed.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message
+        }))
+      ));
+    }
+
+    const { page, limit, from, to } = parsed.data;
     const skip = (page - 1) * limit;
 
-    const condicion = { userId: req.auth.userId };
+    const where = { userId: req.auth.userId };
+
     if (from || to) {
-      condicion.createdAt = {};
-      if (from) condicion.createdAt.gte = new Date(from);
-      if (to) condicion.createdAt.lte = new Date(to);
+      where.createdAt = {};
+      if (from) where.createdAt.gte = new Date(from);
+      if (to) where.createdAt.lte = new Date(to);
     }
 
-    const resultado = await withUserContext(req.auth.userId, async (tx) => {
-      const [total, registros] = await Promise.all([
-        tx.memeHistory.count({ where: condicion }),
+    const { total, entries } = await withUserContext(req.auth.userId, async (tx) => {
+      const [total, entries] = await Promise.all([
+        tx.memeHistory.count({ where }),
         tx.memeHistory.findMany({
-          where: condicion,
+          where,
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' }
         })
       ]);
 
-      return { total, registros };
+      return { total, entries };
     });
-
-    const items = resultado.registros.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      emotionRecordId: r.emotionRecordId,
-      provider: r.provider,
-      imageUrl: r.imageUrl,
-      createdAt: r.createdAt.toISOString()
-    }));
 
     return res.status(200).json({
       status: 'ok',
-      data: items,
-      pagination: {
-        page,
-        limit,
-        total: resultado.total
-      }
+      data: entries.map(serializeHistoryEntry),
+      pagination: { page, limit, total }
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
-app.use('/api/memes', routerMemes);
-app.use('/', routerMemes);
-
 app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    code: 'NOT_FOUND',
-    message: `Ruta ${req.originalUrl} no encontrada`
-  });
+  res.status(404).json(errorBody(
+    'NOT_FOUND',
+    `La ruta ${req.method} ${req.originalUrl} no existe en meme-service`
+  ));
 });
 
-app.use((err, req, res, next) => {
-  const statusCode = err.status || 500;
-  const errorCode = err.code || 'INTERNAL_ERROR';
-  res.status(statusCode).json({
-    status: 'error',
-    code: errorCode,
-    message: err.message || 'Error interno del servidor'
-  });
+app.use((error, req, res, next) => {
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  if (error instanceof AppError) {
+    return res.status(error.statusCode).json(errorBody(error.code, error.message, error.details));
+  }
+
+  if (error?.type === 'entity.parse.failed') {
+    return res.status(400).json(errorBody('VALIDATION_ERROR', 'El cuerpo de la solicitud no contiene JSON válido'));
+  }
+
+  if (error?.code === 'P2002') {
+    return res.status(409).json(errorBody('CONFLICT', 'Este registro ya existe'));
+  }
+
+  console.error(error);
+  return res.status(500).json(errorBody('INTERNAL_ERROR', 'Ocurrió un error interno'));
 });
 
 export default app;

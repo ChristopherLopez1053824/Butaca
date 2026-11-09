@@ -1,19 +1,18 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 # Contrato de API de Butaca
 
 Estado: borrador para aprobación del equipo.
 
-Este contrato define cómo se comunican el frontend, el API Gateway y los microservicios. Si un servicio necesita cambiar algo de este documento, primero se acuerda con el equipo y después se implementa.
+Este contrato define cómo se comunican el frontend, el API Gateway y los microservicios. Si un servicio necesita cambiar algo de este documento, primero se acuerda con el equipo y después se implementa. Las rutas de negocio protegidas ejecutan sus accesos a datos dentro de `withUserContext` para aplicar RLS; ningún servicio acepta un id de usuario enviado en la ruta o en el cuerpo.
 
 | Componente | Estado del contrato |
 |---|---|
 | API Gateway | Implementado en la rama `ApiGateway` |
 | User Service | Implementado en la rama `User-and-Favorite-service` |
-| Favorites Service | Implementado en la rama `User-and-Favorite-service` |
+| Favorites Service | **Revertido a placeholder** por un merge en `Desarrollo` (`136433c`); el contrato describe el diseño previsto, pero el código actual solo responde `/health`. Ver sección 8. |
 | Movie Service | Implementado en la rama `MovieService` |
 | Emotion Service | Implementado en la rama `feature/emotion-service` |
 | Dashboard Service | Implementado en la rama `Desarrollo` |
+| Meme Service | Implementado en la rama `Desarrollo` (contenido bíblico; requiere `BIBLE_API_KEY` propia del proveedor) |
 
 ## 1. Reglas generales
 
@@ -99,6 +98,7 @@ Al convertir las respuestas de Emotion, el Gateway cambia estos códigos:
 | 429 | `RATE_LIMIT_EXCEEDED` | Se superó el límite de solicitudes |
 | 500 | `INTERNAL_ERROR` | Error no controlado |
 | 500 | `AUTH_CONFIGURATION_ERROR` | Autenticación mal configurada |
+| 503 | `SERVICE_NOT_CONFIGURED` | Falta configuración propia del servicio (p. ej. la API Key de un proveedor externo) |
 | 502 | `UPSTREAM_ERROR` | Respuesta inválida de TMDB u otro servicio |
 | 503 | `SERVICE_UNAVAILABLE` | Un servicio no está disponible |
 | 504 | `GATEWAY_TIMEOUT` | Se agotó el tiempo de espera |
@@ -125,33 +125,6 @@ Devuelve el perfil propio. Responde `404 NOT_FOUND` si el trigger de Supabase a�
 ### `PATCH /api/users/me`
 
 Actualiza uno o ambos campos. Debe incluir al menos uno y no admite otros.
-=======
-# Contratos implementados
-
-Las rutas de negocio públicas de estos servicios requieren
-`Authorization: Bearer <JWT>`. El gateway valida el token y elimina el prefijo
-del proxy antes de enviar la solicitud: `/api/users/me` llega a user-service
-como `/me`; `/api/favorites` llega a favorites-service como `/`. Por eso ambos
-servicios validan también el JWT y obtienen de él el UUID del usuario; no aceptan un id de
-usuario en la ruta ni en el cuerpo. Los accesos a datos se ejecutan dentro de
-`withUserContext` para aplicar RLS.
-
-Las respuestas exitosas usan `{ "status": "ok", "data": ... }`. Los errores usan
-`{ "status": "error", "code": "...", "message": "..." }`; los errores de
-validación pueden incluir `details`.
-
-## User Service
-
-### `GET /api/users/me`
-
-Devuelve el perfil propio. Responde `404 NOT_FOUND` si el trigger de Supabase
-aún no creó el perfil.
-
-### `PATCH /api/users/me`
-
-Actualiza uno o ambos campos del perfil. El cuerpo debe incluir al menos un campo
-y no puede contener otros:
->>>>>>> 7799a50 (Servicio de usuario y favorito)
 
 ```json
 {
@@ -160,7 +133,6 @@ y no puede contener otros:
 }
 ```
 
-<<<<<<< HEAD
 `displayName` admite `null` y hasta 120 caracteres. `avatarUrl` admite `null` o una URL válida. El servicio no crea ni elimina perfiles.
 
 ## 6. Emotion Service
@@ -270,17 +242,6 @@ Devuelve los metadatos normalizados de una película o serie desde TMDB.
 ### `POST /api/favorites`
 
 Crea un favorito y responde `201`. El cliente envía los metadatos que se guardarán.
-=======
-`displayName` admite `null` y hasta 120 caracteres; `avatarUrl` admite `null` o
-una URL válida. El servicio no crea ni elimina perfiles.
-
-## Favorites Service
-
-### `POST /api/favorites`
-
-Crea un favorito y responde `201`. El cliente proporciona el título porque el
-Movie Service aún no ofrece la consulta de metadatos:
->>>>>>> 7799a50 (Servicio de usuario y favorito)
 
 ```json
 {
@@ -293,7 +254,6 @@ Movie Service aún no ofrece la consulta de metadatos:
 }
 ```
 
-<<<<<<< HEAD
 `title` es obligatorio. `posterPath`, `releaseDate` y `voteAverage` admiten `null`. `voteAverage` va de 0 a 10. Un duplicado responde `409 CONFLICT`.
 
 ### `GET /api/favorites`
@@ -309,23 +269,10 @@ Elimina un favorito propio y responde `204` sin cuerpo. Responde `404 NOT_FOUND`
 ### `GET /api/dashboard/summary`
 
 Admite `from` y `to`. Reúne los datos de Emotion, Movie y Favorites sin leer sus tablas.
-=======
-`mediaType` admite `MOVIE` o `TV`; `posterPath`, `releaseDate` y `voteAverage`
-son opcionales y admiten `null`. El título es obligatorio. `releaseDate` usa
-`YYYY-MM-DD` y `voteAverage` debe estar entre 0 y 10. Un favorito duplicado
-responde `409 CONFLICT`.
-
-### `GET /api/favorites`
-
-Devuelve los favoritos propios, ordenados por fecha de creación descendente, con
-paginación opcional mediante `page` (predeterminado `1`) y `limit`
-(predeterminado `20`, máximo `100`):
->>>>>>> 7799a50 (Servicio de usuario y favorito)
 
 ```json
 {
   "status": "ok",
-<<<<<<< HEAD
   "data": {
     "emotionTimeline": [
       { "date": "2026-11-01", "emotion": "HAPPY", "count": 2 }
@@ -341,7 +288,53 @@ paginación opcional mediante `page` (predeterminado `1`) y `limit`
 
 Si un servicio falla, el resumen conserva los datos disponibles y agrega ese servicio a `unavailable`, por ejemplo `["favorites"]`.
 
-## 10. Comunicación entre servicios
+## 10. Meme Service (contenido bíblico)
+
+El directorio, el puerto (3006) y el registro en el Gateway se conservan;
+el contenido que sirve cambió de memes a versículos bíblicos relacionados
+con la emoción del usuario. El texto siempre se obtiene en vivo de un
+proveedor externo con licencia (hoy: api.bible); nunca se genera ni se
+inventa.
+
+### `GET /api/memes?emotion=HAPPY&translation=RVR1960`
+
+`emotion` es obligatoria. `translation` es opcional; si se envía y no
+coincide con la traducción configurada en el servicio, responde
+`400 VALIDATION_ERROR` en vez de mostrar contenido de una traducción que no
+está confirmada.
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "provider": "api.bible",
+    "translation": "RVR1960",
+    "externalId": "JHN.3.16",
+    "reference": "Juan 3:16",
+    "theme": "esperanza",
+    "text": "Porque de tal manera amó Dios al mundo...",
+    "copyright": "© Sociedades Bíblicas Unidas. Usado con permiso."
+  }
+}
+```
+
+Si `BIBLE_API_KEY` no está configurada, o el proveedor configurado todavía
+no está implementado, responde `503 SERVICE_NOT_CONFIGURED` con un mensaje
+comprensible, sin afectar a los demás microservicios.
+
+### `POST /api/memes/history`
+
+Registra qué contenido se le mostró al usuario autenticado.
+
+```json
+{ "provider": "RVR1960", "externalId": "JHN.3.16", "title": "Juan 3:16 (RVR1960)", "emotionRecordId": "uuid-opcional" }
+```
+
+### `GET /api/memes/history`
+
+Historial propio, paginado (`page`, `limit`, `from`, `to`), más reciente primero.
+
+## 11. Comunicación entre servicios
 
 Cada llamada usa la URL del servicio por variable de entorno, reenvía `Authorization` y tiene timeout. Estas llamadas no pasan por el Gateway.
 
@@ -356,7 +349,7 @@ El Gateway envía a cada servicio la IP del usuario en `X-Forwarded-For` y el id
 
 Las respuestas entre servicios usan el formato de este contrato, excepto Emotion, que usa su formato interno. Ningún servicio lee ni escribe tablas de otro.
 
-## 11. Temas por aprobar
+## 12. Temas por aprobar
 
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
 

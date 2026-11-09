@@ -123,8 +123,13 @@ services:
     <<: *service-base
     command: ["pnpm", "--filter", "@butaca/meme-service", "start"]
     environment:
-      <<: *runtime-environment
+      <<: *backend-environment
       PORT: 3006
+      BIBLE_API_PROVIDER: ${BIBLE_API_PROVIDER:-api.bible}
+      BIBLE_API_BASE_URL: ${BIBLE_API_BASE_URL:-https://rest.api.bible/v1}
+      BIBLE_API_KEY: ${BIBLE_API_KEY:-}
+      BIBLE_API_TRANSLATION: ${BIBLE_API_TRANSLATION:-RVR1960}
+      BIBLE_API_TIMEOUT_MS: ${BIBLE_API_TIMEOUT_MS:-5000}
     ports:
       - "127.0.0.1:3006:3006"
 
@@ -132,13 +137,13 @@ services:
     build:
       context: ../..
       dockerfile: infrastructure/docker/Containerfile.web
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
-        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     restart: unless-stopped
     networks:
       - butaca
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     ports:
       - "127.0.0.1:5173:80"
     depends_on:
