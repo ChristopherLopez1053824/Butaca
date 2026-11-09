@@ -1,0 +1,29 @@
+# Imagen única para los 7 servicios de Node. El servicio se elige al compilar:
+#   docker build -f infrastructure/docker/Dockerfile.service --build-arg SERVICE=user-service .
+# SERVICE es el nombre de la carpeta dentro de services/ (api-gateway, user-service, ...).
+
+FROM node:24-alpine
+
+ARG SERVICE
+RUN test -n "$SERVICE" || (echo "Falta --build-arg SERVICE=<carpeta del servicio>" && exit 1)
+
+RUN npm install --global pnpm@10 && npm cache clean --force
+
+WORKDIR /app
+
+# Solo lo que necesita el servicio: la configuración del monorepo,
+# los paquetes compartidos (auth, database, shared) y la carpeta del servicio.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ packages/
+COPY services/${SERVICE}/ services/${SERVICE}/
+
+# Dependencias de producción del servicio y de los paquetes de los que depende.
+RUN pnpm install --frozen-lockfile --prod --filter "@butaca/${SERVICE}..." \
+  && pnpm store prune \
+  && chown -R node:node /app
+
+ENV NODE_ENV=production
+WORKDIR /app/services/${SERVICE}
+USER node
+
+CMD ["node", "src/server.js"]

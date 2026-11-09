@@ -1,0 +1,27 @@
+# Frontend: se compila con Vite y se sirve como archivos estáticos con nginx.
+# Las variables VITE_* se leen de apps/web/.env al compilar.
+# Para otro entorno (por ejemplo Cloud Run) se puede cambiar la URL del Gateway:
+#   --build-arg VITE_API_URL=https://mi-gateway.run.app
+
+FROM node:24-alpine AS build
+
+RUN npm install --global pnpm@10 && npm cache clean --force
+
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ packages/
+COPY apps/web/ apps/web/
+
+RUN pnpm install --frozen-lockfile --filter "@butaca/web..."
+
+ARG VITE_API_URL
+RUN if [ -n "$VITE_API_URL" ]; then echo "VITE_API_URL=$VITE_API_URL" > apps/web/.env.production.local; fi
+
+RUN pnpm --filter @butaca/web build
+
+FROM nginx:1.27-alpine
+
+COPY infrastructure/docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+
+EXPOSE 80

@@ -1,0 +1,147 @@
+# Levanta Butaca completo con Docker (frontend, Gateway y 6 microservicios).
+#
+#   docker compose -f infrastructure/docker/docker-compose.yml up --build
+#
+# Cada servicio toma sus secretos de su propio .env (los mismos que en desarrollo).
+# Aquí solo se cambian las direcciones entre servicios, que dentro de Docker
+# usan el nombre del contenedor en vez de localhost.
+# Solo el frontend (5173) y el Gateway (3000) quedan expuestos; los demás
+# servicios solo son accesibles dentro de la red de Docker.
+
+name: butaca
+
+x-servicio: &servicio
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+
+x-build: &build
+  context: ../..
+  dockerfile: infrastructure/docker/Dockerfile.service
+
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web
+    image: butaca/web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-gateway
+
+  api-gateway:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: api-gateway
+    image: butaca/api-gateway
+    env_file: ../../services/api-gateway/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      WEB_URL: http://localhost:5173
+      USER_SERVICE_URL: http://user-service:3001
+      EMOTION_SERVICE_URL: http://emotion-service:3002
+      MOVIE_SERVICE_URL: http://movie-service:3003
+      FAVORITES_SERVICE_URL: http://favorites-service:3004
+      DASHBOARD_SERVICE_URL: http://dashboard-service:3005
+      MEME_SERVICE_URL: http://meme-service:3006
+    ports:
+      - "3000:3000"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      emotion-service:
+        condition: service_healthy
+      movie-service:
+        condition: service_healthy
+      favorites-service:
+        condition: service_healthy
+      dashboard-service:
+        condition: service_healthy
+      meme-service:
+        condition: service_healthy
+
+  user-service:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: user-service
+    image: butaca/user-service
+    env_file: ../../services/user-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+
+  emotion-service:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: emotion-service
+    image: butaca/emotion-service
+    env_file: ../../services/emotion-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+
+  movie-service:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: movie-service
+    image: butaca/movie-service
+    env_file: ../../services/movie-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      EMOTION_SERVICE_URL: http://emotion-service:3002
+
+  favorites-service:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: favorites-service
+    image: butaca/favorites-service
+    env_file: ../../services/favorites-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+
+  dashboard-service:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: dashboard-service
+    image: butaca/dashboard-service
+    env_file: ../../services/dashboard-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      EMOTION_SERVICE_URL: http://emotion-service:3002
+      MOVIE_SERVICE_URL: http://movie-service:3003
+      FAVORITES_SERVICE_URL: http://favorites-service:3004
+      MEME_SERVICE_URL: http://meme-service:3006
+
+  meme-service:
+    <<: *servicio
+    build:
+      <<: *build
+      args:
+        SERVICE: meme-service
+    image: butaca/meme-service
+    env_file: ../../services/meme-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3006

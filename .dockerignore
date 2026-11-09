@@ -1,0 +1,25 @@
+# Dependencias y resultados de compilación: se instalan y generan dentro de la imagen
+**/node_modules
+**/dist
+**/coverage
+.pnpm-store
+
+# Variables de entorno: nunca entran a las imágenes de los servicios.
+# La única excepción es apps/web/.env, porque Vite necesita las variables VITE_*
+# al compilar y de todos modos terminan en el JavaScript público del navegador.
+**/.env
+**/.env.*
+!**/.env.example
+!apps/web/.env
+
+# Repositorio, pruebas y herramientas que no se usan en producción
+.git
+.github
+**/tests
+**/*.test.js
+playwright-report
+test-results
+docs
+*.log
+.vscode
+.idea
