@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/favorites?page=1&limit=20"
+method: GET
+queryParams:
+  page: "1"
+  limit: "20"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      const lista = pm.response.json().data;
+      if (!pm.collectionVariables.get('favoriteId') && lista.length) pm.collectionVariables.set('favoriteId', lista[0].id);
+    language: text/javascript
+order: 2000

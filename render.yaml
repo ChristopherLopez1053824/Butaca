@@ -1,0 +1,281 @@
+# Render Blueprint para Butaca.
+#
+# IMPORTANTE antes de desplegar:
+# - Esta rama se llama "Desarrollo" en el repositorio real, no "development".
+#   Ajusta `branch:` abajo si usas otro nombre, o despliega manualmente desde
+#   la rama que corresponda.
+# - Las URLs internas (http://<nombre-del-servicio>:<puerto>) y la URL pública
+#   del Gateway (https://butaca-api-gateway.onrender.com) asumen que no
+#   renombras los servicios ni agregas un dominio propio. Si cambias un
+#   `name:`, actualiza también cualquier URL que lo mencione en este archivo.
+# - Ningún secreto va en este archivo. Todo lo marcado `sync: false` lo
+#   completas tú manualmente en el dashboard de Render después del primer
+#   despliegue (Render te lo pide automáticamente la primera vez).
+# - BIBLE_API_KEY puede quedar vacía: meme-service arranca igual y responde
+#   un error controlado (503 SERVICE_NOT_CONFIGURED) solo al pedir un
+#   versículo, sin afectar a los demás servicios.
+
+services:
+  # ============================================================
+  # Frontend — único punto público junto con el Gateway.
+  # ============================================================
+  - type: web
+    name: butaca-web
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.web
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # VITE_API_URL / VITE_SUPABASE_* no son build args en Render (Blueprint
+      # no los soporta): se inyectan en tiempo de arranque del contenedor
+      # vía /env.js (ver infrastructure/docker/web-entrypoint.sh).
+      - key: VITE_API_URL
+        value: https://butaca-api-gateway.onrender.com
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+
+  # ============================================================
+  # API Gateway — único backend público; único punto de entrada
+  # del frontend hacia los microservicios.
+  # ============================================================
+  - type: web
+    name: butaca-api-gateway
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/api-gateway start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: WEB_URL
+        value: https://butaca-web.onrender.com
+      - key: PROXY_TIMEOUT_MS
+        value: "15000"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: LOG_REQUESTS
+        value: "true"
+      - key: USER_SERVICE_URL
+        value: http://butaca-user-service:3001
+      - key: EMOTION_SERVICE_URL
+        value: http://butaca-emotion-service:3002
+      - key: MOVIE_SERVICE_URL
+        value: http://butaca-movie-service:3003
+      - key: FAVORITES_SERVICE_URL
+        value: http://butaca-favorites-service:3004
+      - key: DASHBOARD_SERVICE_URL
+        value: http://butaca-dashboard-service:3005
+      - key: MEME_SERVICE_URL
+        value: http://butaca-meme-service:3006
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+
+  # ============================================================
+  # Microservicios internos — type: pserv, sin URL pública.
+  # Render los expone solo en su red privada, en
+  # http://<name>:<PORT>, que es justo lo que usa el Gateway arriba.
+  # pserv no soporta healthCheckPath (eso solo aplica a `web`).
+  # ============================================================
+  - type: pserv
+    name: butaca-user-service
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/user-service start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  - type: pserv
+    name: butaca-emotion-service
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/emotion-service start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3002"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  - type: pserv
+    name: butaca-movie-service
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/movie-service start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3003"
+      - key: EMOTION_SERVICE_URL
+        value: http://butaca-emotion-service:3002
+      - key: EMOTION_SERVICE_TIMEOUT_MS
+        value: "5000"
+      - key: TMDB_API_KEY
+        sync: false
+      - key: TMDB_BASE_URL
+        value: https://api.themoviedb.org/3
+      - key: RECOMMENDATIONS_CURSOR_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  - type: pserv
+    name: butaca-favorites-service
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/favorites-service start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3004"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  - type: pserv
+    name: butaca-dashboard-service
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/dashboard-service start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3005"
+      - key: EMOTION_SERVICE_URL
+        value: http://butaca-emotion-service:3002
+      - key: EMOTION_SERVICE_TIMEOUT_MS
+        value: "5000"
+      - key: MOVIE_SERVICE_URL
+        value: http://butaca-movie-service:3003
+      - key: MOVIE_SERVICE_TIMEOUT_MS
+        value: "5000"
+      - key: FAVORITES_SERVICE_URL
+        value: http://butaca-favorites-service:3004
+      - key: FAVORITES_SERVICE_TIMEOUT_MS
+        value: "5000"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+
+  - type: pserv
+    name: butaca-meme-service
+    runtime: docker
+    repo: https://github.com/ChristopherLopez1053824/Butaca.git
+    branch: Desarrollo
+    dockerfilePath: infrastructure/docker/Containerfile.service
+    dockerContext: .
+    dockerCommand: pnpm --filter @butaca/meme-service start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3006"
+      - key: BIBLE_API_PROVIDER
+        value: api.bible
+      - key: BIBLE_API_BASE_URL
+        value: https://rest.api.bible/v1
+      # Puede quedar vacía: ver nota al inicio de este archivo.
+      - key: BIBLE_API_KEY
+        sync: false
+      - key: BIBLE_API_TRANSLATION
+        sync: false
+      - key: BIBLE_API_TIMEOUT_MS
+        value: "5000"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_ISSUER
+        sync: false
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false

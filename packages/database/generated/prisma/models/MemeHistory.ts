@@ -178,7 +178,7 @@ export type MemeHistoryGroupByOutputType = {
   provider: string
   externalId: string | null
   title: string | null
-  imageUrl: string
+  imageUrl: string | null
   contentUrl: string | null
   createdAt: Date
   _count: MemeHistoryCountAggregateOutputType | null
@@ -211,7 +211,7 @@ export type MemeHistoryWhereInput = {
   provider?: Prisma.StringFilter<"MemeHistory"> | string
   externalId?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   title?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
-  imageUrl?: Prisma.StringFilter<"MemeHistory"> | string
+  imageUrl?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   contentUrl?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MemeHistory"> | Date | string
   user?: Prisma.XOR<Prisma.ProfileScalarRelationFilter, Prisma.ProfileWhereInput>
@@ -225,7 +225,7 @@ export type MemeHistoryOrderByWithRelationInput = {
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrderInput | Prisma.SortOrder
   title?: Prisma.SortOrderInput | Prisma.SortOrder
-  imageUrl?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   contentUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   user?: Prisma.ProfileOrderByWithRelationInput
@@ -242,7 +242,7 @@ export type MemeHistoryWhereUniqueInput = Prisma.AtLeast<{
   provider?: Prisma.StringFilter<"MemeHistory"> | string
   externalId?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   title?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
-  imageUrl?: Prisma.StringFilter<"MemeHistory"> | string
+  imageUrl?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   contentUrl?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MemeHistory"> | Date | string
   user?: Prisma.XOR<Prisma.ProfileScalarRelationFilter, Prisma.ProfileWhereInput>
@@ -256,7 +256,7 @@ export type MemeHistoryOrderByWithAggregationInput = {
   provider?: Prisma.SortOrder
   externalId?: Prisma.SortOrderInput | Prisma.SortOrder
   title?: Prisma.SortOrderInput | Prisma.SortOrder
-  imageUrl?: Prisma.SortOrder
+  imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   contentUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.MemeHistoryCountOrderByAggregateInput
@@ -274,7 +274,7 @@ export type MemeHistoryScalarWhereWithAggregatesInput = {
   provider?: Prisma.StringWithAggregatesFilter<"MemeHistory"> | string
   externalId?: Prisma.StringNullableWithAggregatesFilter<"MemeHistory"> | string | null
   title?: Prisma.StringNullableWithAggregatesFilter<"MemeHistory"> | string | null
-  imageUrl?: Prisma.StringWithAggregatesFilter<"MemeHistory"> | string
+  imageUrl?: Prisma.StringNullableWithAggregatesFilter<"MemeHistory"> | string | null
   contentUrl?: Prisma.StringNullableWithAggregatesFilter<"MemeHistory"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"MemeHistory"> | Date | string
 }
@@ -284,7 +284,7 @@ export type MemeHistoryCreateInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
   user: Prisma.ProfileCreateNestedOneWithoutMemeHistoryInput
@@ -298,7 +298,7 @@ export type MemeHistoryUncheckedCreateInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
 }
@@ -308,7 +308,7 @@ export type MemeHistoryUpdateInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.ProfileUpdateOneRequiredWithoutMemeHistoryNestedInput
@@ -322,7 +322,7 @@ export type MemeHistoryUncheckedUpdateInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -334,7 +334,7 @@ export type MemeHistoryCreateManyInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
 }
@@ -344,7 +344,7 @@ export type MemeHistoryUpdateManyMutationInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -356,7 +356,7 @@ export type MemeHistoryUncheckedUpdateManyInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -496,7 +496,7 @@ export type MemeHistoryCreateWithoutUserInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
   emotionRecord?: Prisma.EmotionRecordCreateNestedOneWithoutMemeHistoryInput
@@ -508,7 +508,7 @@ export type MemeHistoryUncheckedCreateWithoutUserInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
 }
@@ -549,7 +549,7 @@ export type MemeHistoryScalarWhereInput = {
   provider?: Prisma.StringFilter<"MemeHistory"> | string
   externalId?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   title?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
-  imageUrl?: Prisma.StringFilter<"MemeHistory"> | string
+  imageUrl?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   contentUrl?: Prisma.StringNullableFilter<"MemeHistory"> | string | null
   createdAt?: Prisma.DateTimeFilter<"MemeHistory"> | Date | string
 }
@@ -559,7 +559,7 @@ export type MemeHistoryCreateWithoutEmotionRecordInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
   user: Prisma.ProfileCreateNestedOneWithoutMemeHistoryInput
@@ -571,7 +571,7 @@ export type MemeHistoryUncheckedCreateWithoutEmotionRecordInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
 }
@@ -608,7 +608,7 @@ export type MemeHistoryCreateManyUserInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
 }
@@ -618,7 +618,7 @@ export type MemeHistoryUpdateWithoutUserInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   emotionRecord?: Prisma.EmotionRecordUpdateOneWithoutMemeHistoryNestedInput
@@ -630,7 +630,7 @@ export type MemeHistoryUncheckedUpdateWithoutUserInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -641,7 +641,7 @@ export type MemeHistoryUncheckedUpdateManyWithoutUserInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -652,7 +652,7 @@ export type MemeHistoryCreateManyEmotionRecordInput = {
   provider: string
   externalId?: string | null
   title?: string | null
-  imageUrl: string
+  imageUrl?: string | null
   contentUrl?: string | null
   createdAt?: Date | string
 }
@@ -662,7 +662,7 @@ export type MemeHistoryUpdateWithoutEmotionRecordInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.ProfileUpdateOneRequiredWithoutMemeHistoryNestedInput
@@ -674,7 +674,7 @@ export type MemeHistoryUncheckedUpdateWithoutEmotionRecordInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -685,7 +685,7 @@ export type MemeHistoryUncheckedUpdateManyWithoutEmotionRecordInput = {
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  imageUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   contentUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -773,7 +773,7 @@ export type $MemeHistoryPayload<ExtArgs extends runtime.Types.Extensions.Interna
     provider: string
     externalId: string | null
     title: string | null
-    imageUrl: string
+    imageUrl: string | null
     contentUrl: string | null
     createdAt: Date
   }, ExtArgs["result"]["memeHistory"]>

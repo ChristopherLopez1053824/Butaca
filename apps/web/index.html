@@ -1,13 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web-scaffold</title>
+    <title>Butaca</title>
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      /env.js lo genera el contenedor en tiempo de arranque (ver
+      infrastructure/docker/web-entrypoint.sh), no el build de Vite. Permite
+      configurar VITE_API_URL / VITE_SUPABASE_* sin volver a construir la
+      imagen (necesario en Render, que no soporta build args de Docker por
+      Blueprint). En desarrollo local esta petición da 404 y no pasa nada:
+      se usan las variables de import.meta.env de siempre.
+    -->
+    <script src="/env.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -15,6 +15,7 @@ datasource db {
 // ENUMS
 // ==========================================
 
+
 enum Emotion {
   HAPPY
   SAD
@@ -25,8 +26,17 @@ enum Emotion {
   SURPRISED
   DISGUSTED
 
+  // Nuevas emociones
+  NEGATIVE_SURPRISE
+  CONTEMPT
+  FRUSTRATION
+  CONFUSION
+  SHAME
+  BOREDOM
+
   @@map("emotion")
 }
+
 
 enum EmotionSource {
   CAMERA
@@ -145,7 +155,7 @@ model MemeHistory {
   provider        String   @db.VarChar(100)
   externalId      String?  @map("external_id") @db.VarChar(255)
   title           String?  @db.VarChar(300)
-  imageUrl        String   @map("image_url") @db.Text
+  imageUrl        String?  @map("image_url") @db.Text
   contentUrl      String?  @map("content_url") @db.Text
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

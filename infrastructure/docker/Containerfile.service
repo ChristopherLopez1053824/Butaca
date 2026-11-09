@@ -1,0 +1,16 @@
+FROM node:24-alpine
+
+RUN apk add --no-cache openssl
+RUN npm install --global pnpm@10.34.9
+
+WORKDIR /app
+
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+
+ENV NODE_ENV=production
+
+EXPOSE 3000 3001 3002 3003 3004 3005 3006
+
+CMD ["pnpm", "--filter", "@butaca/api-gateway", "start"]

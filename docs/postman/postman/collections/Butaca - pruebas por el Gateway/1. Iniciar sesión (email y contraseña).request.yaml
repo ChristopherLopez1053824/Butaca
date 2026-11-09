@@ -1,0 +1,28 @@
+$kind: http-request
+description: Obtiene un JWT del usuario de prueba y lo guarda en la variable token. Requiere anonKey, email y password en las variables de la colección.
+url: "{{supabaseUrl}}/auth/v1/token?grant_type=password"
+method: POST
+headers:
+  apikey: "{{anonKey}}"
+  Content-Type: application/json
+queryParams:
+  grant_type: password
+body:
+  type: text
+  content: |-
+    {
+      "email": "{{email}}",
+      "password": "{{password}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      const sesion = pm.response.json();
+      pm.test('Devuelve access_token', () => pm.expect(sesion.access_token).to.be.a('string'));
+      pm.collectionVariables.set('token', sesion.access_token);
+      pm.collectionVariables.set('userId', sesion.user && sesion.user.id);
+    language: text/javascript
+order: 7000

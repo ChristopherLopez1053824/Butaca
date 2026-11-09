@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import app from './app.js';
+import { config } from './config.js';
 
-const PORT = Number(process.env.PORT || 3000);
-
-app.listen(PORT, () => {
-  console.log('api-gateway running on port ' + PORT);
+app.listen(config.PORT, () => {
+  console.log('api-gateway running on port ' + config.PORT);
 });

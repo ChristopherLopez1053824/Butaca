@@ -17,7 +17,13 @@ export const Emotion = {
   NEUTRAL: 'NEUTRAL',
   FEARFUL: 'FEARFUL',
   SURPRISED: 'SURPRISED',
-  DISGUSTED: 'DISGUSTED'
+  DISGUSTED: 'DISGUSTED',
+  NEGATIVE_SURPRISE: 'NEGATIVE_SURPRISE',
+  CONTEMPT: 'CONTEMPT',
+  FRUSTRATION: 'FRUSTRATION',
+  CONFUSION: 'CONFUSION',
+  SHAME: 'SHAME',
+  BOREDOM: 'BOREDOM'
 } as const
 
 export type Emotion = (typeof Emotion)[keyof typeof Emotion]

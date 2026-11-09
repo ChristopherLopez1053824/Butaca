@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/emotions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "emotion": "SAD",
+      "source": "MANUAL"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 201', () => pm.response.to.have.status(201));
+      const registro = pm.response.json().data;
+      pm.test('Formato común (status ok)', () => pm.expect(pm.response.json().status).to.eql('ok'));
+      pm.collectionVariables.set('emotionRecordId', registro.id);
+    language: text/javascript
+order: 1000

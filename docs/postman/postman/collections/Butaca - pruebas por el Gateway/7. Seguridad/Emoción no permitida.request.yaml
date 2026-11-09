@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/emotions"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "emotion": "HAPPY",
+      "source": "MANUAL"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 400', () => pm.response.to.have.status(400));
+      pm.test('Convertido a VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));
+    language: text/javascript
+order: 3000

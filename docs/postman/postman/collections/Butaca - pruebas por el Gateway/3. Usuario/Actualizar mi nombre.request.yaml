@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/users/me"
+method: PATCH
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "displayName": "Prueba Butaca"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Responde 200', () => pm.response.to.have.status(200));
+      pm.test('Nombre actualizado', () => pm.expect(pm.response.json().data.displayName).to.eql('Prueba Butaca'));
+    language: text/javascript
+order: 2000
