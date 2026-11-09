@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.34.9",
   "scripts": {
     "dev": "concurrently -k -n WEB,GATEWAY,USER,EMOTION,MOVIE,FAVORITES,DASHBOARD,MEME \"pnpm --filter @butaca/web dev\" \"pnpm --filter @butaca/api-gateway dev\" \"pnpm --filter @butaca/user-service dev\" \"pnpm --filter @butaca/emotion-service dev\" \"pnpm --filter @butaca/movie-service dev\" \"pnpm --filter @butaca/favorites-service dev\" \"pnpm --filter @butaca/dashboard-service dev\" \"pnpm --filter @butaca/meme-service dev\"",
     "dev:web": "pnpm --filter @butaca/web dev",

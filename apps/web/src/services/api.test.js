@@ -1,16 +1,23 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest } from './api';
+
+const mockGetSession = vi.fn();
 
 vi.mock('../lib/supabase', () => ({
   getSupabaseClient: () => ({
     auth: {
-      getSession: async () => ({
-        data: { session: { access_token: 'token-de-prueba' } },
-        error: null
-      })
+      getSession: mockGetSession
     }
   })
 }));
+
+beforeEach(() => {
+  mockGetSession.mockReset();
+  mockGetSession.mockResolvedValue({
+    data: { session: { access_token: 'token-de-prueba' } },
+    error: null
+  });
+});
 
 function mockFetch(status, body, headers = {}) {
   const response = new Response(body, { status, headers });
@@ -69,6 +76,47 @@ describe('apiRequest', () => {
     await expect(apiRequest('/api/movies/recommendations')).rejects.toMatchObject({
       message: 'Error al comunicarse con Butaca',
       status: 502
+    });
+  });
+
+  it('rechaza sin llamar al servidor cuando no hay una sesión activa', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+
+    await expect(apiRequest('/api/emotions', { method: 'POST' })).rejects.toMatchObject({
+      message: 'Debes iniciar sesión para realizar esta solicitud'
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('propaga el error del Gateway cuando el token es inválido', async () => {
+    mockFetch(
+      401,
+      JSON.stringify({ status: 'error', code: 'UNAUTHORIZED', message: 'Token de autenticación inválido' })
+    );
+
+    await expect(apiRequest('/api/emotions', { method: 'POST' })).rejects.toMatchObject({
+      message: 'Token de autenticación inválido',
+      status: 401,
+      code: 'UNAUTHORIZED'
+    });
+  });
+
+  it('propaga el error de configuración de autenticación del Gateway', async () => {
+    mockFetch(
+      500,
+      JSON.stringify({
+        status: 'error',
+        code: 'AUTH_CONFIGURATION_ERROR',
+        message: 'La autenticación no está configurada correctamente'
+      })
+    );
+
+    await expect(apiRequest('/api/emotions', { method: 'POST' })).rejects.toMatchObject({
+      message: 'La autenticación no está configurada correctamente',
+      status: 500,
+      code: 'AUTH_CONFIGURATION_ERROR'
     });
   });
 });

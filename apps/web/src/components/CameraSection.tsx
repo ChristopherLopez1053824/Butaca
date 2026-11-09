@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useEmotionDetection } from '../hooks/useEmotionDetection'
-import type { Emotion, EmotionResult, EmotionSource } from '../lib/emotions'
+import type {
+  Emotion,
+  EmotionResult,
+  EmotionSaveStatus,
+  EmotionSource,
+} from '../lib/emotions'
 import '../styles/camera.css'
 import { EmotionPanel } from './EmotionPanel'
 import { CameraIcon, SparklesIcon } from './icons'
@@ -50,9 +55,15 @@ function getStatusLabel(status: CameraStatus) {
 
 interface CameraSectionProps {
   onEmotionConfirmed?: (result: EmotionResult) => void
+  saveStatus?: EmotionSaveStatus
+  saveError?: string | null
 }
 
-export function CameraSection({ onEmotionConfirmed }: CameraSectionProps) {
+export function CameraSection({
+  onEmotionConfirmed,
+  saveStatus = 'idle',
+  saveError = null,
+}: CameraSectionProps) {
   const [status, setStatus] = useState<CameraStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null)
@@ -184,18 +195,26 @@ export function CameraSection({ onEmotionConfirmed }: CameraSectionProps) {
   const handleUseDetected = useCallback(() => {
     const detected = detection.detected
 
-    if (!detected) {
+    if (!detected || saveStatus === 'saving') {
       return
     }
 
     setSelectedEmotion(detected.emotion)
     setSelectionSource('CAMERA')
     setSelectedConfidence(detected.confidence)
-    setConfirmedEmotion(null)
-  }, [detection.detected])
+
+    const result: EmotionResult = {
+      emotion: detected.emotion,
+      source: 'CAMERA',
+      confidence: detected.confidence,
+    }
+
+    setConfirmedEmotion(result)
+    onEmotionConfirmed?.(result)
+  }, [detection.detected, onEmotionConfirmed, saveStatus])
 
   const handleConfirmEmotion = useCallback(() => {
-    if (!selectedEmotion || !selectionSource) {
+    if (!selectedEmotion || !selectionSource || saveStatus === 'saving') {
       return
     }
 
@@ -215,6 +234,7 @@ export function CameraSection({ onEmotionConfirmed }: CameraSectionProps) {
     selectionSource,
     selectedConfidence,
     onEmotionConfirmed,
+    saveStatus,
   ])
 
   useEffect(() => {
@@ -383,6 +403,8 @@ export function CameraSection({ onEmotionConfirmed }: CameraSectionProps) {
         selectedEmotion={selectedEmotion}
         selectionSource={selectionSource}
         confirmedEmotion={confirmedEmotion}
+        saveStatus={saveStatus}
+        saveError={saveError}
         onSelectManual={handleSelectManual}
         onUseDetected={handleUseDetected}
         onConfirm={handleConfirmEmotion}

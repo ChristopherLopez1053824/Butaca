@@ -5,9 +5,13 @@ import { emotionSchema } from '../../src/validations/emotion.schema.js';
 describe('Emotion Service - Validaciones Zod', () => {
 
   const emociones = [
+    'HAPPY',
     'SAD',
     'ANGRY',
+    'TIRED',
+    'NEUTRAL',
     'FEARFUL',
+    'SURPRISED',
     'DISGUSTED',
     'NEGATIVE_SURPRISE',
     'CONTEMPT',
@@ -74,6 +78,19 @@ describe('Emotion Service - Validaciones Zod', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it.each(['HAPPY', 'TIRED', 'NEUTRAL', 'SURPRISED'])(
+    'acepta la emocion %s con origen CAMERA',
+    (emotion) => {
+      const result = emotionSchema.safeParse({
+        emotion,
+        source: 'CAMERA',
+        confidence: 0.8
+      });
+
+      expect(result.success).toBe(true);
+    }
+  );
 
   it.each([0, 0.5, 1])(
     'acepta confianza %s para CAMERA',

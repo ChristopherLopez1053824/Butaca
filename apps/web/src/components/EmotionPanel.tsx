@@ -4,6 +4,7 @@ import {
   EMOTION_OPTIONS,
   type Emotion,
   type EmotionResult,
+  type EmotionSaveStatus,
   type EmotionSource,
 } from '../lib/emotions'
 import '../styles/emotion-panel.css'
@@ -15,6 +16,8 @@ interface EmotionPanelProps {
   selectedEmotion: Emotion | null
   selectionSource: EmotionSource | null
   confirmedEmotion: EmotionResult | null
+  saveStatus: EmotionSaveStatus
+  saveError: string | null
   onSelectManual: (emotion: Emotion) => void
   onUseDetected: () => void
   onConfirm: () => void
@@ -26,12 +29,17 @@ export function EmotionPanel({
   selectedEmotion,
   selectionSource,
   confirmedEmotion,
+  saveStatus,
+  saveError,
   onSelectManual,
   onUseDetected,
   onConfirm,
 }: EmotionPanelProps) {
   const detected = detection.detected
-  const canConfirm = selectedEmotion !== null && selectionSource !== null
+  const canConfirm =
+    selectedEmotion !== null &&
+    selectionSource !== null &&
+    saveStatus !== 'saving'
   const detectedSelected =
     detected !== null &&
     selectionSource === 'CAMERA' &&
@@ -153,7 +161,9 @@ export function EmotionPanel({
             onClick={onConfirm}
             disabled={!canConfirm}
           >
-            Confirmar emoción
+            {saveStatus === 'saving'
+              ? 'Guardando emoción…'
+              : 'Confirmar emoción'}
           </button>
 
           {selectedEmotion && (
@@ -172,6 +182,24 @@ export function EmotionPanel({
             confirmedEmotion.confidence !== undefined
               ? ` (${Math.round(confirmedEmotion.confidence * 100)} % de confianza)`
               : ' (selección manual)'}
+          </p>
+        )}
+
+        {confirmedEmotion && saveStatus === 'saving' && (
+          <p className="camera-emotion-confirmed" role="status">
+            Guardando tu emoción…
+          </p>
+        )}
+
+        {confirmedEmotion && saveStatus === 'saved' && (
+          <p className="camera-emotion-confirmed" role="status">
+            Emoción guardada correctamente.
+          </p>
+        )}
+
+        {confirmedEmotion && saveStatus === 'error' && (
+          <p className="form-error" role="alert">
+            {saveError ?? 'No pudimos guardar tu emoción. Inténtalo de nuevo.'}
           </p>
         )}
       </div>

@@ -1,0 +1,145 @@
+name: butaca
+
+x-runtime-environment: &runtime-environment
+  NODE_ENV: production
+
+x-supabase-environment: &supabase-environment
+  SUPABASE_URL: ${SUPABASE_URL:-}
+  SUPABASE_JWT_ISSUER: ${SUPABASE_JWT_ISSUER:-}
+  SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-authenticated}
+  SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+  SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:-}
+
+x-database-environment: &database-environment
+  DATABASE_URL: ${DATABASE_URL:-}
+
+x-backend-environment: &backend-environment
+  <<: [*runtime-environment, *supabase-environment, *database-environment]
+
+x-service-base: &service-base
+  build:
+    context: ../..
+    dockerfile: infrastructure/docker/Containerfile.service
+  restart: unless-stopped
+  networks:
+    - butaca
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:$${PORT}/health"]
+    interval: 15s
+    timeout: 5s
+    retries: 5
+    start_period: 20s
+
+services:
+  api-gateway:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/api-gateway", "start"]
+    environment:
+      <<: [*runtime-environment, *supabase-environment]
+      PORT: 3000
+      WEB_URL: ${WEB_URL:-http://localhost:5173}
+      PROXY_TIMEOUT_MS: ${PROXY_TIMEOUT_MS:-15000}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      LOG_REQUESTS: ${LOG_REQUESTS:-true}
+      USER_SERVICE_URL: http://user-service:3001
+      EMOTION_SERVICE_URL: http://emotion-service:3002
+      MOVIE_SERVICE_URL: http://movie-service:3003
+      FAVORITES_SERVICE_URL: http://favorites-service:3004
+      DASHBOARD_SERVICE_URL: http://dashboard-service:3005
+      MEME_SERVICE_URL: http://meme-service:3006
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - user-service
+      - emotion-service
+      - movie-service
+      - favorites-service
+      - dashboard-service
+      - meme-service
+
+  user-service:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/user-service", "start"]
+    environment:
+      <<: *backend-environment
+      PORT: 3001
+    ports:
+      - "127.0.0.1:3001:3001"
+
+  emotion-service:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/emotion-service", "start"]
+    environment:
+      <<: *backend-environment
+      PORT: 3002
+    ports:
+      - "127.0.0.1:3002:3002"
+
+  movie-service:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/movie-service", "start"]
+    environment:
+      <<: *backend-environment
+      PORT: 3003
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TMDB_BASE_URL: ${TMDB_BASE_URL:-https://api.themoviedb.org/3}
+      EMOTION_SERVICE_URL: http://emotion-service:3002
+      EMOTION_SERVICE_TIMEOUT_MS: ${EMOTION_SERVICE_TIMEOUT_MS:-5000}
+      RECOMMENDATIONS_CURSOR_SECRET: ${RECOMMENDATIONS_CURSOR_SECRET:-}
+    ports:
+      - "127.0.0.1:3003:3003"
+    depends_on:
+      - emotion-service
+
+  favorites-service:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/favorites-service", "start"]
+    environment:
+      <<: *backend-environment
+      PORT: 3004
+    ports:
+      - "127.0.0.1:3004:3004"
+
+  dashboard-service:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/dashboard-service", "start"]
+    environment:
+      <<: *runtime-environment
+      PORT: 3005
+    ports:
+      - "127.0.0.1:3005:3005"
+
+  meme-service:
+    <<: *service-base
+    command: ["pnpm", "--filter", "@butaca/meme-service", "start"]
+    environment:
+      <<: *runtime-environment
+      PORT: 3006
+    ports:
+      - "127.0.0.1:3006:3006"
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Containerfile.web
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+    restart: unless-stopped
+    networks:
+      - butaca
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  butaca:
+    driver: bridge

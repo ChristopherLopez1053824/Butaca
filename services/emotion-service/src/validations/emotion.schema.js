@@ -4,9 +4,13 @@ import { z } from 'zod';
 // Emociones permitidas en Butaca
 export const emotionSchema = z.object({
   emotion: z.enum([
+    'HAPPY',
     'SAD',
     'ANGRY',
+    'TIRED',
+    'NEUTRAL',
     'FEARFUL',
+    'SURPRISED',
     'DISGUSTED',
     'NEGATIVE_SURPRISE',
     'CONTEMPT',

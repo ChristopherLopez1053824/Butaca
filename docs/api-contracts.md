@@ -23,7 +23,7 @@ Este contrato define cómo se comunican el frontend, el API Gateway y los micros
 - Las fechas con hora usan ISO 8601 en UTC: `2026-11-01T20:00:00.000Z`.
 - Las fechas sin hora usan `YYYY-MM-DD`.
 - Los ids propios de Butaca son UUID. `tmdbId` es un entero positivo.
-- `emotion` admite `SAD`, `ANGRY`, `FEARFUL`, `DISGUSTED`, `NEGATIVE_SURPRISE`, `CONTEMPT`, `FRUSTRATION`, `CONFUSION`, `SHAME` y `BOREDOM`. El enum de la base conserva otros valores por compatibilidad, pero la API no los acepta.
+- `emotion` admite `HAPPY`, `SAD`, `ANGRY`, `TIRED`, `NEUTRAL`, `FEARFUL`, `SURPRISED`, `DISGUSTED`, `NEGATIVE_SURPRISE`, `CONTEMPT`, `FRUSTRATION`, `CONFUSION`, `SHAME` y `BOREDOM`. El frontend utiliza las ocho primeras; las seis restantes se conservan por compatibilidad.
 - `source` admite `CAMERA` y `MANUAL`.
 - `mediaType` admite `MOVIE` y `TV`.
 
@@ -164,14 +164,17 @@ La cámara usa face-api.js, que detecta 7 expresiones. El frontend las traduce a
 
 | face-api.js | `emotion` |
 |---|---|
+| `happy` | `HAPPY` |
 | `sad` | `SAD` |
 | `angry` | `ANGRY` |
+| `neutral` | `NEUTRAL` |
 | `fearful` | `FEARFUL` |
+| `surprised` | `SURPRISED` |
 | `disgusted` | `DISGUSTED` |
-| `surprised` | `NEGATIVE_SURPRISE` |
-| `happy`, `neutral` | No se registran con cámara; el frontend ofrece la selección manual |
 
-`CONTEMPT`, `FRUSTRATION`, `CONFUSION`, `SHAME` y `BOREDOM` solo se registran con `source: "MANUAL"`.
+Las ocho emociones del frontend pueden registrarse con `CAMERA` o `MANUAL`. `SURPRISED` no se transforma en `NEGATIVE_SURPRISE`.
+
+`NEGATIVE_SURPRISE`, `CONTEMPT`, `FRUSTRATION`, `CONFUSION`, `SHAME` y `BOREDOM` quedan fuera de la integración actual del frontend.
 
 ### `GET /api/emotions`
 
@@ -222,7 +225,7 @@ Genera y guarda recomendaciones. Responde `200`.
 
 Esta ruta usa cursor en lugar de `page`. Cuando no hay más resultados, `nextCursor` es `null`.
 
-Movie obtiene la emoción desde Emotion Service y reconoce sus 10 valores. Si Emotion no responde o devuelve un error, Movie responde `502 UPSTREAM_ERROR`.
+Movie obtiene la emoción desde Emotion Service y reconoce sus 14 valores. Si Emotion no responde o devuelve un error, Movie responde `502 UPSTREAM_ERROR`.
 
 ### `GET /api/movies/recommendations`
 
@@ -300,6 +303,5 @@ Las respuestas entre servicios usan el formato de este contrato, excepto Emotion
 
 ## 11. Temas por aprobar
 
-- Confirmar qué hace el frontend cuando la cámara detecta `happy` o `neutral`.
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
 - Confirmar el formato de `GET /api/dashboard/summary`.

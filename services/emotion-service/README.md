@@ -37,22 +37,26 @@ La generación de recomendaciones corresponde a Movie Service.
 
 La API permite registrar las siguientes emociones:
 
-| Emoción | Valor |
-|---|---|
-| Tristeza | `SAD` |
-| Enojo | `ANGRY` |
-| Miedo | `FEARFUL` |
-| Asco | `DISGUSTED` |
-| Sorpresa negativa | `NEGATIVE_SURPRISE` |
-| Desprecio | `CONTEMPT` |
-| Frustración | `FRUSTRATION` |
-| Confusión | `CONFUSION` |
-| Vergüenza | `SHAME` |
-| Aburrimiento | `BOREDOM` |
+| Emoción | Valor | Uso en frontend |
+|---|---|---|
+| Alegría | `HAPPY` | Sí |
+| Tristeza | `SAD` | Sí |
+| Enojo | `ANGRY` | Sí |
+| Cansancio | `TIRED` | Sí |
+| Neutral | `NEUTRAL` | Sí |
+| Miedo | `FEARFUL` | Sí |
+| Sorpresa | `SURPRISED` | Sí |
+| Asco | `DISGUSTED` | Sí |
+| Sorpresa negativa | `NEGATIVE_SURPRISE` | No |
+| Desprecio | `CONTEMPT` | No |
+| Frustración | `FRUSTRATION` | No |
+| Confusión | `CONFUSION` | No |
+| Vergüenza | `SHAME` | No |
+| Aburrimiento | `BOREDOM` | No |
 
-Estas emociones se validan mediante Zod.
+Estas emociones se validan mediante Zod y coinciden con los valores disponibles en el enum de PostgreSQL.
 
-El enum de PostgreSQL conserva otros valores originales por compatibilidad con el esquema existente, pero el endpoint POST solo acepta las diez emociones acordadas.
+El frontend utiliza las ocho primeras. Las seis restantes se conservan por compatibilidad con el contrato existente y quedan fuera de la integración actual de Emotions → Recommendations.
 
 ## 4. Origen de las emociones
 
@@ -65,7 +69,7 @@ Cuando el origen es `CAMERA`, se requiere el campo `confidence`, con un valor en
 
 Cuando el origen es `MANUAL`, no se debe enviar `confidence`.
 
-El nivel de confianza representa la puntuación asignada por el detector a una expresión facial, no la intensidad emocional real del usuario.
+Las ocho emociones utilizadas por el frontend pueden registrarse con cualquiera de los dos orígenes. El nivel de confianza representa la puntuación asignada por el detector a una expresión facial, no la intensidad emocional real del usuario.
 
 ## 5. Endpoints
 

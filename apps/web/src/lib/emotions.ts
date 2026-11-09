@@ -42,6 +42,8 @@ export const FACE_EXPRESSION_TO_EMOTION: Record<FaceExpression, Emotion> = {
 
 export type EmotionSource = 'CAMERA' | 'MANUAL'
 
+export type EmotionSaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
 export interface EmotionResult {
   emotion: Emotion
   source: EmotionSource
