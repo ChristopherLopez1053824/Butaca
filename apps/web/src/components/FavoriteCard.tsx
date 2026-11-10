@@ -47,9 +47,13 @@ export function FavoriteCard({
         <button
           type="button"
           className="favorite-remove"
+          aria-busy={isRemoving}
           aria-label={`Quitar ${favorite.title} de favoritos`}
           disabled={isRemoving}
-          onClick={onRemove}
+          onClick={(event) => {
+            event.stopPropagation()
+            onRemove()
+          }}
         >
           <HeartIcon fill="currentColor" />
         </button>
