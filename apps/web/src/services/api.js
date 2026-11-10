@@ -1,7 +1,20 @@
 import { getSupabaseClient } from '../lib/supabase';
 import { getRuntimeEnv } from '../lib/runtimeEnv';
 
-const API_URL = getRuntimeEnv('VITE_API_URL') || 'http://localhost:3000';
+// En desarrollo, si se accede desde otro dispositivo (por ejemplo un teléfono
+// en la misma red) "localhost" apuntaría al propio teléfono. Usamos el host
+// actual para que el API Gateway sea accesible desde ese dispositivo.
+function defaultApiUrl() {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:3000';
+  }
+
+  const { protocol, hostname } = window.location;
+
+  return `${protocol}//${hostname}:3000`;
+}
+
+const API_URL = getRuntimeEnv('VITE_API_URL') || defaultApiUrl();
 
 async function getAccessToken() {
   const supabase = getSupabaseClient();

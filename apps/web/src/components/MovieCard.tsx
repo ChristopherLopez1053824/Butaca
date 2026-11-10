@@ -60,13 +60,17 @@ export function MovieCard({
           type="button"
           className={`movie-favorite${isFavorite ? ' is-favorite' : ''}`}
           aria-pressed={isFavorite}
+          aria-busy={isFavoritePending}
           aria-label={
             isFavorite
               ? `Quitar ${recommendation.title} de favoritos`
               : `Agregar ${recommendation.title} a favoritos`
           }
           disabled={isFavoritePending}
-          onClick={onToggleFavorite}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggleFavorite()
+          }}
         >
           <HeartIcon fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
