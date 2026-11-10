@@ -1,11 +1,38 @@
-# Render Blueprint para Butaca.
+# Render Blueprint para Butaca — configurado para desplegarse por completo
+# con instancias gratuitas (plan: free en los 8 servicios, sin pserv).
+#
+# POR QUÉ TODOS SON "type: web" Y NO "pserv":
+# Render no ofrece una instancia gratuita para "type: pserv" (servicio
+# privado) — solo existe en planes de pago (confirmado contra
+# render.com/docs/free y render.com/docs/private-network). Por eso Render
+# pedía tarjeta: no era por el tamaño del proyecto, era por el tipo de
+# servicio.
+#
+# POR QUÉ LA COMUNICACIÓN ES POR URL PÚBLICA Y NO POR RED PRIVADA:
+# Incluso convertidos a "web" con plan "free", la documentación oficial de
+# Render dice explícitamente: "Free web services can send private network
+# requests, but they can't receive them." Es decir, un servicio gratuito
+# puede LLAMAR a otros por la red privada, pero no puede RECIBIR llamadas
+# por ahí. Como los seis microservicios son gratuitos, nadie puede
+# alcanzarlos por `http://<nombre>:<puerto>` — ni el Gateway ni Dashboard
+# Service. La única forma de que se comuniquen es la URL pública
+# `https://<nombre>.onrender.com` de cada uno.
+#
+# CONSECUENCIA DE SEGURIDAD QUE DEBES CONOCER (no es un error, es inherente
+# al plan gratuito): los seis microservicios dejan de ser "internos" en la
+# práctica — cualquiera con la URL puede llamarlos directamente, saltándose
+# el Gateway. Sigue estando protegido porque cada servicio exige su propio
+# JWT en `requireAuth` antes de cualquier ruta de negocio (no toqué esa
+# lógica, sigue intacta) y cada uno tiene su propio rate limit — pero ya no
+# hay un único punto de entrada que lo garantice a nivel de red. Si esto te
+# preocupa, la única forma de recuperar el aislamiento real es pagar al
+# menos el plan Starter (~$7/mes) en los seis microservicios.
 #
 # IMPORTANTE antes de desplegar:
 # - Esta rama se llama "Desarrollo" en el repositorio real, no "development".
 #   Ajusta `branch:` abajo si usas otro nombre, o despliega manualmente desde
 #   la rama que corresponda.
-# - Las URLs internas (http://<nombre-del-servicio>:<puerto>) y la URL pública
-#   del Gateway (https://butaca-api-gateway.onrender.com) asumen que no
+# - Todas las URLs públicas (https://<name>.onrender.com) asumen que no
 #   renombras los servicios ni agregas un dominio propio. Si cambias un
 #   `name:`, actualiza también cualquier URL que lo mencione en este archivo.
 # - Ningún secreto va en este archivo. Todo lo marcado `sync: false` lo
@@ -14,14 +41,26 @@
 # - BIBLE_API_KEY puede quedar vacía: meme-service arranca igual y responde
 #   un error controlado (503 SERVICE_NOT_CONFIGURED) solo al pedir un
 #   versículo, sin afectar a los demás servicios.
+#
+# LÍMITES DEL PLAN GRATUITO (ver informe para el análisis completo):
+# - 750 horas de instancia gratuitas por mes, COMPARTIDAS por todo el
+#   workspace entre los 8 servicios — no 750 por servicio.
+# - 512 MB de RAM y 0.1 CPU por instancia.
+# - Cada servicio se suspende tras 15 minutos sin tráfico entrante, y tarda
+#   ~1 minuto en volver a arrancar en la siguiente petición.
+# - Un solo usuario interactuando puede despertar varios servicios a la vez
+#   (Gateway → 6 servicios; Dashboard → Emotion/Movie/Favorites), así que el
+#   primer request tras inactividad puede tardar varios minutos encadenados,
+#   no solo uno.
 
 services:
   # ============================================================
-  # Frontend — único punto público junto con el Gateway.
+  # Frontend
   # ============================================================
   - type: web
     name: butaca-web
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.web
@@ -39,12 +78,13 @@ services:
         sync: false
 
   # ============================================================
-  # API Gateway — único backend público; único punto de entrada
-  # del frontend hacia los microservicios.
+  # API Gateway — único punto de entrada previsto para el frontend.
+  # Llama a los seis microservicios por su URL pública (ver nota arriba).
   # ============================================================
   - type: web
     name: butaca-api-gateway
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
@@ -58,24 +98,28 @@ services:
         value: "3000"
       - key: WEB_URL
         value: https://butaca-web.onrender.com
+      # 90s, no 15s: un servicio gratuito dormido puede tardar ~1 minuto en
+      # despertar (ver nota de límites al inicio del archivo). Con 15s,
+      # cualquier llamada a un servicio dormido fallaría por timeout antes
+      # de que termine de arrancar.
       - key: PROXY_TIMEOUT_MS
-        value: "15000"
+        value: "90000"
       - key: TRUST_PROXY
         value: "1"
       - key: LOG_REQUESTS
         value: "true"
       - key: USER_SERVICE_URL
-        value: http://butaca-user-service:3001
+        value: https://butaca-user-service.onrender.com
       - key: EMOTION_SERVICE_URL
-        value: http://butaca-emotion-service:3002
+        value: https://butaca-emotion-service.onrender.com
       - key: MOVIE_SERVICE_URL
-        value: http://butaca-movie-service:3003
+        value: https://butaca-movie-service.onrender.com
       - key: FAVORITES_SERVICE_URL
-        value: http://butaca-favorites-service:3004
+        value: https://butaca-favorites-service.onrender.com
       - key: DASHBOARD_SERVICE_URL
-        value: http://butaca-dashboard-service:3005
+        value: https://butaca-dashboard-service.onrender.com
       - key: MEME_SERVICE_URL
-        value: http://butaca-meme-service:3006
+        value: https://butaca-meme-service.onrender.com
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_JWT_ISSUER
@@ -88,19 +132,22 @@ services:
         sync: false
 
   # ============================================================
-  # Microservicios internos — type: pserv, sin URL pública.
-  # Render los expone solo en su red privada, en
-  # http://<name>:<PORT>, que es justo lo que usa el Gateway arriba.
-  # pserv no soporta healthCheckPath (eso solo aplica a `web`).
+  # Microservicios — type: web (no pserv) + plan: free, porque Render no
+  # ofrece pserv gratuito. Quedan con URL pública propia por esa misma
+  # razón (ver nota arriba): no hay forma de que reciban tráfico privado
+  # siendo gratuitos. Cada uno sigue exigiendo JWT en sus rutas de negocio
+  # exactamente igual que antes — eso no cambió.
   # ============================================================
-  - type: pserv
+  - type: web
     name: butaca-user-service
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
     dockerContext: .
     dockerCommand: pnpm --filter @butaca/user-service start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -119,14 +166,16 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  - type: pserv
+  - type: web
     name: butaca-emotion-service
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
     dockerContext: .
     dockerCommand: pnpm --filter @butaca/emotion-service start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -145,23 +194,26 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  - type: pserv
+  - type: web
     name: butaca-movie-service
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
     dockerContext: .
     dockerCommand: pnpm --filter @butaca/movie-service start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "3003"
       - key: EMOTION_SERVICE_URL
-        value: http://butaca-emotion-service:3002
+        value: https://butaca-emotion-service.onrender.com
+      # 90s por el arranque en frío del plan gratuito, ver nota al inicio.
       - key: EMOTION_SERVICE_TIMEOUT_MS
-        value: "5000"
+        value: "90000"
       - key: TMDB_API_KEY
         sync: false
       - key: TMDB_BASE_URL
@@ -181,14 +233,16 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  - type: pserv
+  - type: web
     name: butaca-favorites-service
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
     dockerContext: .
     dockerCommand: pnpm --filter @butaca/favorites-service start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -207,31 +261,34 @@ services:
       - key: DATABASE_URL
         sync: false
 
-  - type: pserv
+  - type: web
     name: butaca-dashboard-service
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
     dockerContext: .
     dockerCommand: pnpm --filter @butaca/dashboard-service start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "3005"
       - key: EMOTION_SERVICE_URL
-        value: http://butaca-emotion-service:3002
+        value: https://butaca-emotion-service.onrender.com
+      # 90s por el arranque en frío del plan gratuito, ver nota al inicio.
       - key: EMOTION_SERVICE_TIMEOUT_MS
-        value: "5000"
+        value: "90000"
       - key: MOVIE_SERVICE_URL
-        value: http://butaca-movie-service:3003
+        value: https://butaca-movie-service.onrender.com
       - key: MOVIE_SERVICE_TIMEOUT_MS
-        value: "5000"
+        value: "90000"
       - key: FAVORITES_SERVICE_URL
-        value: http://butaca-favorites-service:3004
+        value: https://butaca-favorites-service.onrender.com
       - key: FAVORITES_SERVICE_TIMEOUT_MS
-        value: "5000"
+        value: "90000"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_JWT_ISSUER
@@ -243,14 +300,16 @@ services:
       - key: SUPABASE_JWKS_URL
         sync: false
 
-  - type: pserv
+  - type: web
     name: butaca-meme-service
     runtime: docker
+    plan: free
     repo: https://github.com/ChristopherLopez1053824/Butaca.git
     branch: Desarrollo
     dockerfilePath: infrastructure/docker/Containerfile.service
     dockerContext: .
     dockerCommand: pnpm --filter @butaca/meme-service start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
