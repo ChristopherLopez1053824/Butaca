@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { BibleVerseSection } from '../components/BibleVerseSection'
 import { CameraSection } from '../components/CameraSection'
@@ -57,6 +58,7 @@ export function DashboardPage() {
   } = useAuth()
   const emotionFlow = useEmotionFlow()
   const favorites = useFavorites()
+  const [favoriteError, setFavoriteError] = useState<string | null>(null)
   const emotionVerse = useEmotionVerse(
     emotionFlow.emotionRecord?.emotion ?? null,
     emotionFlow.emotionRecord?.id ?? null,
@@ -83,27 +85,49 @@ export function DashboardPage() {
     void signOut()
   }
 
-  function handleToggleFavorite(recommendation: Recommendation) {
-    if (favorites.isFavorite(recommendation.tmdbId, recommendation.mediaType)) {
-      void favorites.removeFavorite(
-        recommendation.tmdbId,
-        recommendation.mediaType,
-      )
-      return
-    }
+  async function handleToggleFavorite(recommendation: Recommendation) {
+    setFavoriteError(null)
 
-    void favorites.addFavorite({
-      tmdbId: recommendation.tmdbId,
-      mediaType: recommendation.mediaType,
-      title: recommendation.title,
-      posterPath: recommendation.posterPath,
-      releaseDate: recommendation.releaseDate,
-      voteAverage: recommendation.voteAverage,
-    })
+    try {
+      if (
+        favorites.isFavorite(recommendation.tmdbId, recommendation.mediaType)
+      ) {
+        await favorites.removeFavorite(
+          recommendation.tmdbId,
+          recommendation.mediaType,
+        )
+        return
+      }
+
+      await favorites.addFavorite({
+        tmdbId: recommendation.tmdbId,
+        mediaType: recommendation.mediaType,
+        title: recommendation.title,
+        posterPath: recommendation.posterPath,
+        releaseDate: recommendation.releaseDate,
+        voteAverage: recommendation.voteAverage,
+      })
+    } catch (error) {
+      setFavoriteError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'No pudimos actualizar tus favoritos. Inténtalo de nuevo.',
+      )
+    }
   }
 
-  function handleRemoveFavorite(favorite: Favorite) {
-    void favorites.removeFavorite(favorite.tmdbId, favorite.mediaType)
+  async function handleRemoveFavorite(favorite: Favorite) {
+    setFavoriteError(null)
+
+    try {
+      await favorites.removeFavorite(favorite.tmdbId, favorite.mediaType)
+    } catch (error) {
+      setFavoriteError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'No pudimos actualizar tus favoritos. Inténtalo de nuevo.',
+      )
+    }
   }
 
   return (
@@ -146,6 +170,11 @@ export function DashboardPage() {
           isFavoritePending={favorites.isPending}
           onToggleFavorite={handleToggleFavorite}
         />
+        {favoriteError && (
+          <p className="form-error dashboard-favorite-error" role="alert">
+            {favoriteError}
+          </p>
+        )}
         <BibleVerseSection
           status={emotionVerse.status}
           verse={emotionVerse.verse}

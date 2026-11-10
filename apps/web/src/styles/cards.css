@@ -3,9 +3,11 @@
   gap: 14px;
   padding: 2px 2px 10px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
   scrollbar-color: rgba(196, 181, 253, 0.26) transparent;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .media-row::-webkit-scrollbar {
@@ -108,16 +110,20 @@
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 2;
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
+  padding: 0;
   color: var(--pink);
   background: rgba(11, 19, 26, 0.66);
   border: 1px solid rgba(249, 168, 212, 0.24);
   border-radius: 50%;
   backdrop-filter: blur(8px);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
@@ -126,8 +132,18 @@
   transform: scale(1.06);
 }
 
+.movie-favorite:active {
+  background: rgba(11, 19, 26, 0.9);
+  transform: scale(0.92);
+}
+
 .movie-favorite.is-favorite {
   background: rgba(249, 168, 212, 0.22);
+}
+
+.movie-favorite:focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
 }
 
 .movie-favorite:disabled {
@@ -139,6 +155,7 @@
 .movie-favorite svg {
   width: 15px;
   height: 15px;
+  pointer-events: none;
 }
 
 .movie-info {
@@ -294,23 +311,36 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 1;
+  z-index: 2;
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
+  padding: 0;
   color: var(--pink);
   background: rgba(11, 19, 26, 0.72);
   border: 1px solid rgba(249, 168, 212, 0.3);
   border-radius: 50%;
   backdrop-filter: blur(8px);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .favorite-remove:hover {
   background: rgba(11, 19, 26, 0.9);
   transform: scale(1.06);
+}
+
+.favorite-remove:active {
+  background: rgba(11, 19, 26, 0.95);
+  transform: scale(0.92);
+}
+
+.favorite-remove:focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
 }
 
 .favorite-remove:disabled {
@@ -322,6 +352,7 @@
 .favorite-remove svg {
   width: 13px;
   height: 13px;
+  pointer-events: none;
 }
 
 .favorite-info {
@@ -479,9 +510,45 @@
   }
 }
 
+@media (hover: none) {
+  .movie-card:hover,
+  .favorite-card:hover {
+    transform: none;
+  }
+
+  .movie-favorite:hover,
+  .favorite-remove:hover {
+    transform: none;
+  }
+}
+
 @media (max-width: 700px) {
   .movie-card {
     flex-basis: 158px;
+  }
+
+  .movie-favorite {
+    top: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .movie-favorite svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .favorite-remove {
+    top: 6px;
+    right: 6px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .favorite-remove svg {
+    width: 15px;
+    height: 15px;
   }
 
   .bar-label {
@@ -500,6 +567,26 @@
 
   .movie-card {
     flex-basis: 148px;
+  }
+
+  .movie-favorite {
+    width: 44px;
+    height: 44px;
+  }
+
+  .movie-favorite svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .favorite-remove {
+    width: 40px;
+    height: 40px;
+  }
+
+  .favorite-remove svg {
+    width: 16px;
+    height: 16px;
   }
 
   .favorite-row {
