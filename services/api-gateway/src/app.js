@@ -45,6 +45,16 @@ app.use(cors({
   exposedHeaders: ['X-Request-Id']
 }));
 
+// Registrada antes del rate limiter para que el health check de Render
+// nunca comparta cupo con el tráfico de la API.
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'api-gateway',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 200,
@@ -65,14 +75,6 @@ app.use((req, res, next) => {
   }
 
   next();
-});
-
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    service: 'api-gateway',
-    timestamp: new Date().toISOString()
-  });
 });
 
 // keepPrefix: el servicio declara sus rutas con /api/<servicio>.

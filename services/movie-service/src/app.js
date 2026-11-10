@@ -15,13 +15,8 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
-  standardHeaders: 'draft-7',
-  legacyHeaders: false
-}));
-
+// Registrada antes del rate limiter para que el health check de Render
+// nunca comparta cupo con el tráfico de la API.
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -29,6 +24,13 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+}));
 
 app.use(routes);
 
