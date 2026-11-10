@@ -22,6 +22,20 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(express.json({ limit: '1mb' }));
 
+// ==========================================
+// HEALTH CHECK
+// ==========================================
+// Registrada antes del rate limiter para que el health check de Render
+// nunca comparta cupo con el tráfico de la API.
+
+app.get('/health', (req, res) => {
+  return res.status(200).json({
+    status: 'ok',
+    service: 'emotion-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 100,
@@ -51,18 +65,6 @@ const historySchema = z.object({
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional()
 }).strict();
-
-// ==========================================
-// HEALTH CHECK
-// ==========================================
-
-app.get('/health', (req, res) => {
-  return res.status(200).json({
-    status: 'ok',
-    service: 'emotion-service',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // ==========================================
 // AUTENTICACIÓN
