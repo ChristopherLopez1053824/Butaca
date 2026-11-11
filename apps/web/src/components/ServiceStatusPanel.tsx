@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { checkGateway, checkService } from '../services/api'
-import type { HealthResponse } from '../services/api'
+import { checkGateway } from '../services/api'
+import { useAutoWake } from '../hooks/useAutoWake'
+import type { WakeServiceStatus } from '../hooks/useAutoWake'
 
 const services = [
   { name: 'User Service', shortName: 'User', route: 'users' },
@@ -11,13 +12,10 @@ const services = [
   { name: 'Meme Service', shortName: 'Meme', route: 'memes' },
 ] as const
 
-type ServiceStatus = 'checking' | 'online' | 'offline'
+type GatewayStatus = 'checking' | 'online' | 'offline'
+type DisplayStatus = GatewayStatus | WakeServiceStatus
 
-function getStatus(response: HealthResponse): ServiceStatus {
-  return response.status === 'ok' ? 'online' : 'offline'
-}
-
-function getStatusLabel(status: ServiceStatus) {
+function getGatewayStatusLabel(status: GatewayStatus) {
   if (status === 'online') {
     return 'Conectado'
   }
@@ -29,15 +27,29 @@ function getStatusLabel(status: ServiceStatus) {
   return 'Comprobando...'
 }
 
-export function ServiceStatusPanel() {
-  const [gateway, setGateway] = useState<ServiceStatus>('checking')
-  const [results, setResults] = useState<Record<string, ServiceStatus>>({})
-  const [loading, setLoading] = useState(true)
+function getServiceStatusLabel(status: DisplayStatus) {
+  switch (status) {
+    case 'online':
+      return 'Conectado'
+    case 'waking':
+      return 'Despertando...'
+    case 'timeout':
+      return 'Tiempo de espera agotado'
+    case 'error':
+      return 'Error'
+    case 'offline':
+      return 'Desconectado'
+    default:
+      return 'Comprobando...'
+  }
+}
 
-  const checkConnections = useCallback(async () => {
-    setLoading(true)
+export function ServiceStatusPanel() {
+  const [gateway, setGateway] = useState<GatewayStatus>('checking')
+  const { snapshot, retry } = useAutoWake()
+
+  const checkGatewayStatus = useCallback(async () => {
     setGateway('checking')
-    setResults({})
 
     try {
       await checkGateway()
@@ -45,29 +57,20 @@ export function ServiceStatusPanel() {
     } catch {
       setGateway('offline')
     }
-
-    const statuses = await Promise.all(
-      services.map(async (service) => {
-        try {
-          const result = await checkService(service.route)
-          return [service.route, getStatus(result)] as const
-        } catch {
-          return [service.route, 'offline'] as const
-        }
-      }),
-    )
-
-    setResults(Object.fromEntries(statuses))
-    setLoading(false)
   }, [])
 
   useEffect(() => {
-    void checkConnections()
-  }, [checkConnections])
+    void checkGatewayStatus()
+  }, [checkGatewayStatus])
 
-  const onlineCount = Object.values(results).filter(
-    (status) => status === 'online',
-  ).length
+  const loading = snapshot?.waking ?? true
+  const onlineCount = snapshot?.onlineCount ?? 0
+  const total = snapshot?.total ?? services.length
+
+  function handleRetry() {
+    void checkGatewayStatus()
+    retry()
+  }
 
   return (
     <section className="service-bar" aria-labelledby="services-title">
@@ -75,12 +78,12 @@ export function ServiceStatusPanel() {
         <div>
           <span className="eyebrow">Estado del sistema</span>
           <h2 id="services-title">
-            Servicios conectados: {onlineCount}/{services.length}
+            Servicios conectados: {onlineCount}/{total}
           </h2>
         </div>
 
         <span className={`status-pill ${gateway}`}>
-          {getStatusLabel(gateway)}
+          {getGatewayStatusLabel(gateway)}
         </span>
       </div>
 
@@ -92,14 +95,15 @@ export function ServiceStatusPanel() {
           </span>
 
           {services.map((service) => {
-            const status = results[service.route] ?? 'checking'
+            const status: DisplayStatus =
+              snapshot?.services[service.route]?.status ?? 'checking'
 
             return (
               <span
                 className={`service-chip ${status}`}
                 key={service.route}
-                title={`${service.name}: ${getStatusLabel(status)}`}
-                aria-label={`${service.name}: ${getStatusLabel(status)}`}
+                title={`${service.name}: ${getServiceStatusLabel(status)}`}
+                aria-label={`${service.name}: ${getServiceStatusLabel(status)}`}
               >
                 <span className="service-dot" aria-hidden="true" />
                 {service.shortName}
@@ -111,10 +115,10 @@ export function ServiceStatusPanel() {
         <button
           type="button"
           className="button button-ghost button-small"
-          onClick={checkConnections}
+          onClick={handleRetry}
           disabled={loading}
         >
-          {loading ? 'Comprobando...' : 'Volver a comprobar'}
+          {loading ? 'Despertando servicios...' : 'Volver a comprobar'}
         </button>
       </div>
     </section>

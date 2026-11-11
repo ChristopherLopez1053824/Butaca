@@ -358,7 +358,58 @@ El Gateway envía a cada servicio la IP del usuario en `X-Forwarded-For` y el id
 
 Las respuestas entre servicios usan el formato de este contrato, excepto Emotion, que usa su formato interno. Ningún servicio lee ni escribe tablas de otro.
 
-## 12. Temas por aprobar
+## 12. Auto-Wake (API Gateway)
+
+Los seis microservicios corren en el plan gratuito de Render y se suspenden
+tras 15 minutos sin tráfico (ver nota de límites en `render.yaml`). Estas dos
+rutas dejan que el frontend le pida al Gateway que los reactive al entrar al
+Dashboard, en vez de que cada usuario tenga que abrir manualmente la URL de
+cada servicio. Requieren el mismo `Authorization: Bearer <token>` que el
+resto de `/api/*`; no hay forma anónima de disparar un ciclo de activación.
+
+### `POST /api/wake`
+
+Si ya hay un ciclo en curso, no inicia uno nuevo: devuelve el estado actual
+sin volver a pedirle nada a los seis servicios. Si no hay ninguno en curso,
+arranca uno (pings paralelos a cada `/health`, con reintentos) y responde de
+inmediato con el estado conocido hasta ese momento; no espera a que termine.
+
+### `GET /api/wake`
+
+Devuelve el estado más reciente sin iniciar nada. El frontend lo sondea
+cada pocos segundos hasta que `onlineCount` llegue a `total` o se agote su
+propio tiempo de espera.
+
+Ambas responden el mismo cuerpo:
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "waking": true,
+    "startedAt": "2026-11-10T00:00:00.000Z",
+    "onlineCount": 3,
+    "total": 6,
+    "services": {
+      "users": { "status": "online", "lastCheckedAt": "2026-11-10T00:00:00.000Z" },
+      "emotions": { "status": "waking", "lastCheckedAt": "2026-11-10T00:00:00.000Z" },
+      "movies": { "status": "timeout", "lastCheckedAt": "2026-11-10T00:00:00.000Z" },
+      "favorites": { "status": "offline", "lastCheckedAt": null },
+      "dashboard": { "status": "error", "lastCheckedAt": "2026-11-10T00:00:00.000Z" },
+      "memes": { "status": "online", "lastCheckedAt": "2026-11-10T00:00:00.000Z" }
+    }
+  }
+}
+```
+
+`status` de cada servicio: `offline` (nunca comprobado todavía), `waking`
+(ping en curso), `online` (su `/health` respondió 200 con
+`{ "status": "ok" }`), `timeout` (no respondió dentro del tiempo límite) o
+`error` (respuesta distinta de 200, cuerpo inválido, o fallo de red/DNS). Un
+servicio solo se marca `online` por responder correctamente a su propio
+`/health`; nunca por haber recibido la solicitud de activación.
+
+## 13. Temas por aprobar
 
 - Definir si `/health` queda público en los servicios y cómo aislarlos en el despliegue.
 
