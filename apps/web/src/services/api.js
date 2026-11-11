@@ -86,3 +86,13 @@ export function checkGateway() {
 export function checkService(service) {
   return apiRequest(`/api/${service}/health`);
 }
+
+// Auto-Wake: le pide al Gateway que active los seis microservicios si
+// estaban suspendidos (plan free de Render) y que luego informe su progreso.
+export function triggerWake() {
+  return apiRequest('/api/wake', { method: 'POST' });
+}
+
+export function getWakeStatus() {
+  return apiRequest('/api/wake');
+}
