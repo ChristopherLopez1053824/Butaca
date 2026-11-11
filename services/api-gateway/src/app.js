@@ -8,7 +8,6 @@ import { requireAuth } from '@butaca/auth';
 import { config } from './config.js';
 import { errorBody, proxyError } from './errors.js';
 import { toCommonFormat } from './response-format.js';
-import { createWakeController } from './wake.js';
 
 const app = express();
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
@@ -89,8 +88,6 @@ const services = [
   ['memes', config.MEME_SERVICE_URL]
 ];
 
-const wake = createWakeController(services);
-
 const adaptResponse = responseInterceptor(async (buffer, proxyRes) => {
   const contentType = proxyRes.headers['content-type'] || '';
 
@@ -120,17 +117,6 @@ app.use('/api', (req, res, next) => {
   }
 
   return next();
-});
-
-// Auto-Wake: el frontend llama esto una vez al entrar al Dashboard para que
-// Render reactive los seis microservicios si estaban suspendidos, y luego
-// sondea el GET para ver el progreso (ver docs/api-contracts.md).
-app.post('/api/wake', (req, res) => {
-  res.status(200).json({ status: 'ok', data: wake.startCycle() });
-});
-
-app.get('/api/wake', (req, res) => {
-  res.status(200).json({ status: 'ok', data: wake.getSnapshot() });
 });
 
 for (const [route, target, options = {}] of services) {
