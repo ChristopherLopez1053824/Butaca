@@ -24,23 +24,3 @@ export function apiRequest<T = unknown>(
 export function checkGateway(): Promise<HealthResponse>
 
 export function checkService(service: string): Promise<HealthResponse>
-
-export interface WakeServiceState {
-  status: 'offline' | 'waking' | 'online' | 'timeout' | 'error'
-  lastCheckedAt: string | null
-}
-
-export interface WakeStatusResponse {
-  status: string
-  data: {
-    waking: boolean
-    startedAt: string | null
-    onlineCount: number
-    total: number
-    services: Record<string, WakeServiceState>
-  }
-}
-
-export function triggerWake(): Promise<WakeStatusResponse>
-
-export function getWakeStatus(): Promise<WakeStatusResponse>

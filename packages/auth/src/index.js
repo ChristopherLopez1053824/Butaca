@@ -18,6 +18,8 @@ class AuthConfigurationError extends Error {
   }
 }
 
+//Authorization: Bearer eyJhbGciOi...
+
 function bearerToken(authorization) {
   if (typeof authorization !== 'string') {
     return null;

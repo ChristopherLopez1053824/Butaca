@@ -203,20 +203,9 @@
   box-shadow: 0 0 0 4px rgba(134, 239, 172, 0.1);
 }
 
-.service-chip.offline .service-dot,
-.service-chip.error .service-dot {
+.service-chip.offline .service-dot {
   background: var(--pink);
   box-shadow: 0 0 0 4px rgba(249, 168, 212, 0.1);
-}
-
-.service-chip.waking .service-dot {
-  background: var(--yellow);
-  box-shadow: 0 0 0 4px rgba(253, 230, 138, 0.1);
-}
-
-.service-chip.timeout .service-dot {
-  background: var(--sky);
-  box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.1);
 }
 
 .service-bar .status-pill {
