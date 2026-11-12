@@ -29,6 +29,35 @@ function getStatusLabel(status: ServiceStatus) {
   return 'Comprobando...'
 }
 
+const GATEWAY_RETRY_ATTEMPTS = 2
+const GATEWAY_RETRY_DELAY_MS = 2500
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// El Gateway puede estar suspendido (plan free de Render) cuando llega esta
+// primera petición: esa misma petición lo despierta, pero puede responder
+// con un 502/503 de Render mientras arranca. Un solo intento marcaría "sin
+// conexión" aunque el Gateway sí esté funcionando segundos después, que es
+// justo cuando pasan las comprobaciones de los seis microservicios.
+async function checkGatewayWithRetry(): Promise<boolean> {
+  for (let attempt = 1; attempt <= GATEWAY_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await checkGateway()
+      return true
+    } catch {
+      if (attempt === GATEWAY_RETRY_ATTEMPTS) {
+        return false
+      }
+
+      await wait(GATEWAY_RETRY_DELAY_MS)
+    }
+  }
+
+  return false
+}
+
 export function ServiceStatusPanel() {
   const [gateway, setGateway] = useState<ServiceStatus>('checking')
   const [results, setResults] = useState<Record<string, ServiceStatus>>({})
@@ -39,12 +68,8 @@ export function ServiceStatusPanel() {
     setGateway('checking')
     setResults({})
 
-    try {
-      await checkGateway()
-      setGateway('online')
-    } catch {
-      setGateway('offline')
-    }
+    const gatewayOnline = await checkGatewayWithRetry()
+    setGateway(gatewayOnline ? 'online' : 'offline')
 
     const statuses = await Promise.all(
       services.map(async (service) => {
